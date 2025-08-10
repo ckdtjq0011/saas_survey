@@ -43,6 +43,8 @@ log/
 .coverage
 .pytest_cache/
 htmlcov/
+coverage.xml
+*.cover
 .tox/
 .hypothesis/
 
