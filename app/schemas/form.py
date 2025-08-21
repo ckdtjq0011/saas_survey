@@ -73,6 +73,7 @@ class FormUpdate(BaseModel):
 class Form(FormBase):
     id: int
     owner_id: int
+    share_token: Optional[str] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
     questions: List[Question] = []

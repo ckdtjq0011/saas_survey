@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.startup import initialize_app
 from app.db.base import engine, Base
-from app.api import forms, users, responses, surveys, survey_responses, auth, export
+from app.api.v1 import api_router
 
 # Initialize application (validate configuration, etc.)
 initialize_app()
@@ -14,6 +14,7 @@ Base.metadata.create_all(bind=engine)
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
+    description="Google Forms-like Survey Platform API",
     openapi_url=f"{settings.API_V1_STR}/openapi.json"
 )
 
@@ -26,23 +27,26 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include routers
-app.include_router(auth.router, prefix="/auth", tags=["authentication"])
-app.include_router(users.router, prefix=f"{settings.API_V1_STR}/users", tags=["users"])
-app.include_router(forms.router, prefix=f"{settings.API_V1_STR}/forms", tags=["forms"])
-app.include_router(responses.router, prefix=f"{settings.API_V1_STR}/responses", tags=["responses"])
-app.include_router(export.router, prefix="/export", tags=["export"])
+# Include API v1 router
+app.include_router(api_router, prefix=settings.API_V1_STR)
 
-# Public test endpoints (simplified API)
-app.include_router(surveys.router, prefix="/surveys", tags=["surveys"])
-app.include_router(survey_responses.router, prefix="/responses", tags=["survey_responses"])
+# Keep legacy endpoints for backward compatibility (optional)
+# You can remove these once you've migrated all clients to v1
+from app.api import surveys, survey_responses
+app.include_router(surveys.router, prefix="/legacy/surveys", tags=["legacy"])
+app.include_router(survey_responses.router, prefix="/legacy/responses", tags=["legacy"])
 
 
 @app.get("/")
 def root():
-    return {"message": "Welcome to SaaS Survey API", "version": settings.VERSION}
+    return {
+        "message": "Welcome to SaaS Survey API",
+        "version": settings.VERSION,
+        "docs": "/docs",
+        "api_v1": settings.API_V1_STR
+    }
 
 
 @app.get("/health")
 def health_check():
-    return {"status": "healthy"}
+    return {"status": "healthy", "version": settings.VERSION}
