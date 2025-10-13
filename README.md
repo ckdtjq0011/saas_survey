@@ -1,225 +1,174 @@
-# SaaS Survey Platform
+# SaaS 병원 만족도 설문조사 플랫폼 MVP
 
-[![CI](https://github.com/ckdtjq0011/saas_survey/actions/workflows/ci.yml/badge.svg)](https://github.com/ckdtjq0011/saas_survey/actions/workflows/ci.yml)
-[![CD - Deploy](https://github.com/ckdtjq0011/saas_survey/actions/workflows/cd.yml/badge.svg)](https://github.com/ckdtjq0011/saas_survey/actions/workflows/cd.yml)
+병원 만족도 조사를 위한 DDD 기반 설문조사 플랫폼입니다.
 
-구글폼과 유사한 설문조사 플랫폼 백엔드 API - FastAPI와 현대적인 Python 도구로 구축
+## 프로젝트 구조
 
-## 🚀 주요 기능
-
-### 인증 시스템
-- 🔐 회원가입/로그인 (JWT 토큰)
-- 👤 사용자 인증 및 권한 관리
-
-### 설문 관리 
-- 📝 CRUD (생성/조회/수정/삭제)
-- 🔗 공유 링크 생성
-- 📋 설문 복사
-- ⏰ 응답 기한 설정
-- 🔢 응답 수 제한
-- 🔒 로그인 필수 옵션
-
-### 응답 시스템
-- ✅ 응답 제출/조회/수정/삭제
-- 🛡️ 답변 유효성 검증
-- 🚫 중복 응답 방지
-- ⭐ 필수 답변 확인
-
-### 통계 및 내보내기
-- 📊 응답 통계 조회
-- 📁 CSV 내보내기
-- 📄 JSON 내보내기
-
-## 🛠️ 기술 스택
-
-- **Backend**: FastAPI, SQLAlchemy, Pydantic
-- **Database**: SQLite (개발), PostgreSQL (운영)
-- **Authentication**: JWT with python-jose
-- **Package Management**: uv (초고속 Python 패키지 관리자)
-- **Testing**: pytest, pytest-cov
-- **CI/CD**: GitHub Actions
-- **Containerization**: Docker, Docker Compose
-
-## 📋 사전 요구사항
-
-- Python 3.10+
-- [uv](https://github.com/astral-sh/uv) (권장) 또는 pip
-
-## 🔧 설치 방법
-
-### uv 사용 (권장)
-
-```bash
-# 저장소 클론
-git clone https://github.com/ckdtjq0011/saas_survey.git
-cd saas_survey
-
-# uv 설치 (아직 설치하지 않은 경우)
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# 의존성 설치
-uv sync
-
-# 환경변수 설정
-cp .env.example .env
-
-# 안전한 SECRET_KEY 생성
-python -c "import secrets; print(secrets.token_hex(32))"
-# 생성된 키를 .env 파일에 추가
-
-# 애플리케이션 실행
-uv run uvicorn app.main:app --reload
+```
+saas_survey/
+├── domain/                          # 도메인 계층 (핵심 비즈니스 로직)
+│   ├── entities/                    # 엔티티
+│   │   ├── survey.py               # 설문 엔티티
+│   │   ├── question.py             # 질문 엔티티
+│   │   └── response.py             # 응답 엔티티
+│   ├── value_objects/               # 값 객체
+│   │   └── types.py                # QuestionType enum
+│   └── repositories/                # 저장소 인터페이스
+│       ├── survey_repository.py
+│       └── response_repository.py
+├── application/                     # 애플리케이션 계층 (유스케이스)
+│   ├── survey_service.py           # 설문 서비스
+│   └── response_service.py         # 응답 서비스
+├── infrastructure/                  # 인프라스트럭처 계층
+│   └── persistence/                # 영속성 구현
+│       ├── csv_survey_repository.py
+│       └── csv_response_repository.py
+├── interface/                       # 인터페이스 계층
+│   └── cli/
+│       └── commands.py             # CLI 명령어 핸들러
+├── tests/                          # 시나리오 테스트
+│   ├── conftest.py                # pytest 픽스처
+│   ├── test_scenarios.py          # 통합 테스트
+│   └── README.md                  # 테스트 가이드
+├── data/                           # CSV 데이터 저장소
+│   ├── surveys.csv
+│   ├── questions.csv
+│   └── responses.csv
+├── main.py                         # 진입점 및 데모
+└── run_tests.py                    # 테스트 실행 스크립트
 ```
 
-### Docker 사용
+## 아키텍처
+
+DDD 4계층 구조로 설계되었습니다:
+
+1. **Domain** - 비즈니스 로직, 엔티티, 저장소 인터페이스
+2. **Application** - 유스케이스, 서비스
+3. **Infrastructure** - CSV 기반 저장소 구현
+4. **Interface** - CLI 명령어 핸들러
+
+## 핵심 기능
+
+- 설문 생성 및 질문 추가 (평점형, 객관식, 텍스트형)
+- 응답 제출
+- 결과 조회 및 통계 (평균 평점, 분포 등)
+- CSV 기반 영속화
+
+## 실행 방법
+
+### MVP 데모 실행
 
 ```bash
-# 저장소 클론
-git clone https://github.com/ckdtjq0011/saas_survey.git
-cd saas_survey
-
-# 환경변수 설정
-cp .env.example .env
-# .env 파일을 편집하여 설정
-
-# Docker Compose로 빌드 및 실행
-docker-compose up -d
+python main.py
 ```
-
-## 🧪 개발
 
 ### 테스트 실행
 
 ```bash
-# 모든 테스트 실행
-uv run pytest
+# 전체 테스트 실행
+pytest tests/test_scenarios.py -v
 
-# 커버리지 포함 실행
-uv run pytest --cov=app --cov-report=html
+# 또는 테스트 스크립트 사용
+python run_tests.py
 
-# 특정 테스트 파일 실행
-uv run pytest tests/test_config.py -v
+# 특정 시나리오만 실행
+pytest tests/test_scenarios.py::TestScenario01 -v
 ```
 
-### 코드 품질
+## 테스트 시나리오
 
-```bash
-# 코드 포맷팅
-uv run ruff format .
+총 8개의 시나리오 테스트가 구현되어 있습니다:
 
-# 린트 검사
-uv run ruff check .
+1. **전체 워크플로우** (test_complete_survey_workflow)
+   - 설문 생성부터 결과 조회까지 전체 흐름 검증
 
-# 타입 체킹
-uv run mypy app
+2. **질문 유형 테스트** (test_all_question_types)
+   - TEXT, RATING, MULTIPLE_CHOICE 모든 유형 검증
+
+3. **다중 응답자** (test_multiple_respondents)
+   - 10명의 응답자 통계 집계 검증
+
+4. **에러 케이스** (3개 테스트)
+   - 존재하지 않는 설문 조회
+   - 잘못된 질문 유형
+   - 기타 에러 처리
+
+5. **CSV 영속성** (2개 테스트)
+   - 데이터 저장 및 조회 검증
+   - 다중 설문 영속성 검증
+
+자세한 테스트 가이드는 `tests/README.md` 참조
+
+## 설계 특징
+
+- **dataclass 사용**: 모든 엔티티는 frozen=True, slots=True
+- **타입힌트 필수**: 모든 함수에 타입힌트 적용
+- **예외 처리**: 도메인/애플리케이션은 예외 발생만, CLI에서 처리
+- **CSV 영속화**: UTF-8 인코딩, 자동 생성
+- **KISS, YAGNI, DRY** 원칙 준수
+
+## 질문 유형
+
+- **TEXT**: 텍스트 답변
+- **RATING**: 평점 답변 (1-5)
+- **MULTIPLE_CHOICE**: 객관식
+
+## 데이터 저장
+
+모든 데이터는 `data/` 디렉토리의 CSV 파일에 저장됩니다:
+- `surveys.csv`: 설문 기본 정보
+- `questions.csv`: 질문 정보
+- `responses.csv`: 응답 정보
+
+## CLI 명령어 사용 예시
+
+```python
+from pathlib import Path
+from interface.cli.commands import SurveyCommands
+
+commands = SurveyCommands(Path("data"))
+
+# 설문 생성
+survey_id = commands.create_survey(
+    title="병원 만족도 조사",
+    description="설문 설명"
+)
+
+# 질문 추가
+question_id = commands.add_question(
+    survey_id=survey_id,
+    text="전반적인 병원 서비스에 만족하십니까?",
+    question_type="rating"
+)
+
+# 응답 제출
+commands.submit_response(
+    survey_id=survey_id,
+    respondent_id="patient_001",
+    answers={question_id: "5"}
+)
+
+# 결과 조회
+results = commands.get_results(survey_id)
 ```
 
-## 📚 API 문서
-
-애플리케이션 실행 후 접속 가능:
-
-- **대화형 API 문서**: http://localhost:8000/docs
-- **대체 API 문서**: http://localhost:8000/redoc
-- **OpenAPI 스키마**: http://localhost:8000/api/v1/openapi.json
-
-## 🌐 주요 API 엔드포인트
-
-### 인증
-- `POST /auth/register` - 회원가입
-- `POST /auth/login` - 로그인  
-- `GET /auth/me` - 내 정보
-
-### 설문
-- `POST /surveys/` - 설문 생성
-- `GET /surveys/` - 설문 목록
-- `GET /surveys/{id}` - 설문 조회
-- `PUT /surveys/{id}` - 설문 수정
-- `DELETE /surveys/{id}` - 설문 삭제
-- `GET /surveys/s/{token}` - 공유 링크로 조회
-- `POST /surveys/{id}/duplicate` - 설문 복사
-- `GET /surveys/{id}/stats` - 통계
-
-### 응답
-- `POST /responses/` - 응답 제출
-- `GET /responses/{id}` - 응답 조회
-- `PUT /responses/{id}` - 응답 수정
-- `DELETE /responses/{id}` - 응답 삭제
-
-### 내보내기
-- `GET /export/{id}/csv` - CSV 다운로드
-- `GET /export/{id}/json` - JSON 다운로드
-
-## 📁 프로젝트 구조
+## 코드 통계
 
 ```
-saas_survey/
-├── app/
-│   ├── api/           # API 엔드포인트
-│   ├── core/          # 핵심 설정
-│   ├── db/            # 데이터베이스 설정
-│   ├── models/        # SQLAlchemy 모델
-│   └── main.py        # 애플리케이션 진입점
-├── tests/             # 테스트 파일
-├── .github/
-│   └── workflows/     # CI/CD 워크플로우
-├── docker-compose.yml # Docker Compose 설정
-├── Dockerfile         # Docker 설정
-├── pyproject.toml     # 프로젝트 의존성
-├── uv.lock           # 고정된 의존성
-└── README.md         # 이 파일
+domain/          275 lines (엔티티, Value Object, Repository 인터페이스)
+application/     200 lines (SurveyService, ResponseService)
+infrastructure/  188 lines (CSV 저장소 구현)
+interface/       171 lines (CLI 명령어 핸들러)
+tests/           330 lines (시나리오 테스트)
+---------------------------------------------------------
+총 구현 코드:    1164 lines
 ```
 
-## 🔑 환경 변수
+## 향후 확장 계획
 
-주요 환경 변수 (전체 목록은 `.env.example` 참조):
-
-- `SECRET_KEY`: JWT용 비밀 키 (필수, 최소 32자)
-- `DATABASE_URL`: 데이터베이스 연결 문자열
-- `DEBUG`: 디버그 모드 (True/False)
-- `BACKEND_CORS_ORIGINS`: 허용된 CORS 출처
-
-## 🚀 CI/CD 파이프라인
-
-### Continuous Integration (CI)
-
-모든 push와 pull request에서 실행:
-
-1. **테스팅**: Python 3.10, 3.11, 3.12에서 실행
-2. **린팅**: ruff로 코드 품질 검사
-3. **타입 체킹**: mypy로 정적 타입 분석
-4. **보안**: pip-audit과 bandit으로 취약점 스캔
-5. **커버리지**: codecov로 테스트 커버리지 보고
-
-### Continuous Deployment (CD)
-
-배포 파이프라인:
-
-1. **빌드**: Docker 이미지 생성 및 GitHub Container Registry에 푸시
-2. **배포**: 스테이징/프로덕션 환경에 자동 배포
-   - 스테이징: `dev` 브랜치에서 배포
-   - 프로덕션: `main` 브랜치에서 배포 (수동 승인 필요)
-
-## 🤝 기여하기
-
-1. 저장소 포크
-2. 기능 브랜치 생성 (`git checkout -b feature/amazing-feature`)
-3. 변경사항 커밋 (`git commit -m 'Add amazing feature'`)
-4. 브랜치에 푸시 (`git push origin feature/amazing-feature`)
-5. Pull Request 열기
-
-## 🔒 보안
-
-- 모든 민감한 설정은 환경 변수로 관리
-- 인증을 위한 JWT 토큰
-- bcrypt로 비밀번호 해싱
-- SQLAlchemy ORM으로 SQL 인젝션 방지
-- Dependabot으로 정기적인 의존성 업데이트
-
-## 📝 라이센스
-
-이 프로젝트는 MIT 라이센스 하에 있습니다 - 자세한 내용은 LICENSE 파일을 참조하세요.
-
-## 📞 연락처
-
-- GitHub: [@ckdtjq0011](https://github.com/ckdtjq0011)
-- 프로젝트 링크: [https://github.com/ckdtjq0011/saas_survey](https://github.com/ckdtjq0011/saas_survey)
+- 사용자 인증/권한 관리
+- 데이터베이스 연동 (PostgreSQL)
+- REST API (FastAPI)
+- 웹 프론트엔드
+- 고급 통계 분석
+- 파일 내보내기 (PDF, Excel)

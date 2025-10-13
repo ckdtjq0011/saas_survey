@@ -1,0 +1,7 @@
+﻿id,survey_id,text,question_type,options
+776ebdab-bf12-4af9-a5b5-32a101c9b782,eac2db48-c7b3-4e7e-aecb-8d6c3d700939,전반적인 병원 서비스에 만족하십니까?,rating,
+d56bcdd5-3a0a-48ba-8585-fa7b7e7ef754,eac2db48-c7b3-4e7e-aecb-8d6c3d700939,가장 만족스러웠던 부분은 무엇입니까?,choice,의료진 친절도|대기 시간|시설 청결도|진료 결과
+fbb697c6-74b2-4afc-b205-cdaa916706a6,eac2db48-c7b3-4e7e-aecb-8d6c3d700939,개선이 필요한 사항을 자유롭게 작성해주세요,text,
+0fc3e38a-51b6-4cba-aa70-baa76ec50cdc,74422c71-bf0f-42a1-b38d-836c8ab51570,전반적인 병원 서비스에 만족하십니까?,rating,
+29a81e0b-ed7b-41ce-9a24-3f107aff05c6,74422c71-bf0f-42a1-b38d-836c8ab51570,가장 만족스러웠던 부분은 무엇입니까?,choice,의료진 친절도|대기 시간|시설 청결도|진료 결과
+43d21568-d84f-4754-9d2b-b6182bf9f3ed,74422c71-bf0f-42a1-b38d-836c8ab51570,개선이 필요한 사항을 자유롭게 작성해주세요,text,
