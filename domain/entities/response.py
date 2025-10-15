@@ -21,6 +21,23 @@ class Response:
     respondent_id: str
     created_at: datetime
 
+    def __post_init__(self) -> None:
+        """생성 후 불변 조건을 검증합니다.
+
+        Raises:
+            ValueError: 불변 조건 위반 시
+        """
+        if not self.id:
+            raise ValueError("응답 ID는 필수입니다")
+        if not self.survey_id:
+            raise ValueError("설문 ID는 필수입니다")
+        if not self.question_id:
+            raise ValueError("질문 ID는 필수입니다")
+        if not self.answer or not self.answer.strip():
+            raise ValueError("답변 내용은 필수입니다")
+        if not self.respondent_id:
+            raise ValueError("응답자 ID는 필수입니다")
+
     def to_dict(self) -> dict[str, str]:
         """엔티티를 딕셔너리로 변환합니다.
 

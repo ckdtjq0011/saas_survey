@@ -19,6 +19,22 @@ class Question:
     question_type: QuestionType
     options: tuple[str, ...] | None = None
 
+    def __post_init__(self) -> None:
+        """생성 후 불변 조건을 검증합니다.
+
+        Raises:
+            ValueError: 불변 조건 위반 시
+        """
+        if not self.id:
+            raise ValueError("질문 ID는 필수입니다")
+        if not self.survey_id:
+            raise ValueError("설문 ID는 필수입니다")
+        if not self.text or not self.text.strip():
+            raise ValueError("질문 내용은 필수입니다")
+        if self.question_type == QuestionType.MULTIPLE_CHOICE:
+            if not self.options or len(self.options) < 2:
+                raise ValueError("객관식 질문은 최소 2개 이상의 선택지가 필요합니다")
+
     def to_dict(self) -> dict[str, str]:
         """엔티티를 딕셔너리로 변환합니다.
 

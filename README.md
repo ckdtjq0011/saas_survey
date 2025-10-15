@@ -24,8 +24,17 @@ saas_survey/
 │       ├── csv_survey_repository.py
 │       └── csv_response_repository.py
 ├── interface/                       # 인터페이스 계층
-│   └── cli/
-│       └── commands.py             # CLI 명령어 핸들러
+│   ├── cli/                        # CLI 인터페이스
+│   │   └── commands.py            # CLI 명령어 핸들러
+│   └── api/                        # RESTful API 인터페이스
+│       ├── main.py                # FastAPI 앱 초기화
+│       ├── dependencies.py        # 의존성 주입
+│       ├── schemas/               # Pydantic 스키마
+│       │   ├── survey.py
+│       │   └── response.py
+│       └── routers/               # API 라우터
+│           ├── surveys.py
+│           └── responses.py
 ├── tests/                          # 시나리오 테스트
 │   ├── conftest.py                # pytest 픽스처
 │   ├── test_scenarios.py          # 통합 테스트
@@ -34,8 +43,10 @@ saas_survey/
 │   ├── surveys.csv
 │   ├── questions.csv
 │   └── responses.csv
-├── main.py                         # 진입점 및 데모
-└── run_tests.py                    # 테스트 실행 스크립트
+├── main.py                         # CLI 데모 진입점
+├── app.py                          # FastAPI 서버 실행
+├── test_api.py                     # API 테스트 스크립트
+└── run_tests.py                    # 시나리오 테스트 실행
 ```
 
 ## 아키텍처
@@ -45,7 +56,7 @@ DDD 4계층 구조로 설계되었습니다:
 1. **Domain** - 비즈니스 로직, 엔티티, 저장소 인터페이스
 2. **Application** - 유스케이스, 서비스
 3. **Infrastructure** - CSV 기반 저장소 구현
-4. **Interface** - CLI 명령어 핸들러
+4. **Interface** - CLI 명령어 핸들러, RESTful API (FastAPI + Swagger)
 
 ## 핵심 기능
 
@@ -56,11 +67,37 @@ DDD 4계층 구조로 설계되었습니다:
 
 ## 실행 방법
 
-### MVP 데모 실행
+### 인터랙티브 CLI 실행
 
 ```bash
 python main.py
 ```
+
+순수 CLI로 동작하는 인터랙티브 설문조사 시스템입니다. 메뉴를 통해 다음 기능을 수행할 수 있습니다:
+
+1. 설문 생성
+2. 질문 추가 (텍스트, 평점, 객관식)
+3. 설문 조회
+4. 설문 목록
+5. 응답 제출
+6. 결과 조회
+
+자세한 사용법은 `docs/CLI_USAGE.md` 참조
+
+### RESTful API 서버 실행
+
+```bash
+# FastAPI 서버 시작
+python app.py
+
+# 또는 uvicorn 직접 실행
+uvicorn interface.api.main:app --reload
+```
+
+**API 문서 접속**:
+- Swagger UI: http://localhost:8000/docs
+- ReDoc: http://localhost:8000/redoc
+- Health Check: http://localhost:8000/health
 
 ### 테스트 실행
 
@@ -99,6 +136,30 @@ pytest tests/test_scenarios.py::TestScenario01 -v
 
 자세한 테스트 가이드는 `tests/README.md` 참조
 
+## RESTful API
+
+### API 문서 (Swagger UI)
+
+**모든 API 상세 정보는 Swagger UI에서 확인하세요**: http://localhost:8000/docs
+
+Swagger UI에서 제공하는 정보:
+- 모든 엔드포인트 목록 및 상세 설명
+- 요청/응답 스키마 및 예시
+- 각 질문 유형별 사용법
+- 에러 케이스 및 상태 코드
+- API 직접 테스트 기능 (Try it out)
+
+### 주요 엔드포인트
+
+- `POST /api/v1/surveys` - 설문 생성
+- `GET /api/v1/surveys` - 설문 목록
+- `GET /api/v1/surveys/{id}` - 설문 조회
+- `POST /api/v1/surveys/{id}/questions` - 질문 추가
+- `POST /api/v1/surveys/{id}/responses` - 응답 제출
+- `GET /api/v1/surveys/{id}/results` - 결과 조회
+
+**자세한 사용법과 예시는 Swagger UI 참조**
+
 ## 설계 특징
 
 - **dataclass 사용**: 모든 엔티티는 frozen=True, slots=True
@@ -120,37 +181,29 @@ pytest tests/test_scenarios.py::TestScenario01 -v
 - `questions.csv`: 질문 정보
 - `responses.csv`: 응답 정보
 
-## CLI 명령어 사용 예시
+## CLI 사용 예시
 
-```python
-from pathlib import Path
-from interface.cli.commands import SurveyCommands
+프로그램을 실행하면 인터랙티브 메뉴가 나타납니다:
 
-commands = SurveyCommands(Path("data"))
-
-# 설문 생성
-survey_id = commands.create_survey(
-    title="병원 만족도 조사",
-    description="설문 설명"
-)
-
-# 질문 추가
-question_id = commands.add_question(
-    survey_id=survey_id,
-    text="전반적인 병원 서비스에 만족하십니까?",
-    question_type="rating"
-)
-
-# 응답 제출
-commands.submit_response(
-    survey_id=survey_id,
-    respondent_id="patient_001",
-    answers={question_id: "5"}
-)
-
-# 결과 조회
-results = commands.get_results(survey_id)
 ```
+============================================================
+                병원 만족도 설문조사 플랫폼
+============================================================
+
+메뉴
+--
+1. 설문 생성
+2. 질문 추가
+3. 설문 조회
+4. 설문 목록
+5. 응답 제출
+6. 결과 조회
+0. 종료
+
+선택:
+```
+
+메뉴 번호를 입력하여 각 기능을 사용할 수 있습니다. 자세한 사용법은 `docs/CLI_USAGE.md`를 참조하세요.
 
 ## 코드 통계
 
@@ -158,17 +211,28 @@ results = commands.get_results(survey_id)
 domain/          275 lines (엔티티, Value Object, Repository 인터페이스)
 application/     200 lines (SurveyService, ResponseService)
 infrastructure/  188 lines (CSV 저장소 구현)
-interface/       171 lines (CLI 명령어 핸들러)
+interface/cli/   171 lines (CLI 명령어 핸들러)
+interface/api/   450 lines (FastAPI, Pydantic 스키마, 라우터)
 tests/           330 lines (시나리오 테스트)
 ---------------------------------------------------------
-총 구현 코드:    1164 lines
+총 구현 코드:    1614 lines
 ```
+
+## 기술 스택
+
+- **Backend**: Python 3.12+
+- **Web Framework**: FastAPI
+- **API Documentation**: Swagger UI / ReDoc
+- **Validation**: Pydantic
+- **Storage**: CSV (UTF-8)
+- **Testing**: pytest
+- **Architecture**: DDD (Domain-Driven Design)
 
 ## 향후 확장 계획
 
-- 사용자 인증/권한 관리
+- 사용자 인증/권한 관리 (JWT)
 - 데이터베이스 연동 (PostgreSQL)
-- REST API (FastAPI)
-- 웹 프론트엔드
+- 웹 프론트엔드 (React/Vue)
 - 고급 통계 분석
 - 파일 내보내기 (PDF, Excel)
+- WebSocket 실시간 업데이트

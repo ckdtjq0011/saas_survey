@@ -20,6 +20,19 @@ class Survey:
     created_at: datetime
     questions: tuple[Question, ...] = ()
 
+    def __post_init__(self) -> None:
+        """생성 후 불변 조건을 검증합니다.
+
+        Raises:
+            ValueError: 불변 조건 위반 시
+        """
+        if not self.id:
+            raise ValueError("설문 ID는 필수입니다")
+        if not self.title or not self.title.strip():
+            raise ValueError("설문 제목은 필수입니다")
+        if not self.description or not self.description.strip():
+            raise ValueError("설문 설명은 필수입니다")
+
     def to_dict(self) -> dict[str, str]:
         """엔티티를 딕셔너리로 변환합니다.
 

@@ -5,3 +5,13 @@ fbb697c6-74b2-4afc-b205-cdaa916706a6,eac2db48-c7b3-4e7e-aecb-8d6c3d700939,개선
 0fc3e38a-51b6-4cba-aa70-baa76ec50cdc,74422c71-bf0f-42a1-b38d-836c8ab51570,전반적인 병원 서비스에 만족하십니까?,rating,
 29a81e0b-ed7b-41ce-9a24-3f107aff05c6,74422c71-bf0f-42a1-b38d-836c8ab51570,가장 만족스러웠던 부분은 무엇입니까?,choice,의료진 친절도|대기 시간|시설 청결도|진료 결과
 43d21568-d84f-4754-9d2b-b6182bf9f3ed,74422c71-bf0f-42a1-b38d-836c8ab51570,개선이 필요한 사항을 자유롭게 작성해주세요,text,
+f697ccdc-e9b5-4329-8666-c56826d382d4,fbf09a1e-9b55-4f76-948d-ebbd717ba234,서비스에 만족하십니까?,rating,
+a240e71c-fb7d-49b7-bade-e0834a535d39,fbf09a1e-9b55-4f76-948d-ebbd717ba234,가장 좋았던 점은?,choice,의료진|시설|대기시간
+d6e86995-077c-4375-a957-73986f9cc04e,eac2db48-c7b3-4e7e-aecb-8d6c3d700939,평점 질문 테스트,rating,
+7d1a2dff-7bc8-488d-b04a-036b1b2339da,eac2db48-c7b3-4e7e-aecb-8d6c3d700939,텍스트 질문 테스트,text,
+18d076db-b666-49e4-bf50-80ce77acce91,eac2db48-c7b3-4e7e-aecb-8d6c3d700939,객관식 질문 테스트,choice,선택1|선택2|선택3
+64429c78-8ecf-46c7-a8e3-abeffa963105,bcf7373b-dea3-4527-a695-602c429581ba,서비스 품질 평가,rating,
+22667395-198e-4db7-9022-8af44528bd18,bcf7373b-dea3-4527-a695-602c429581ba,가장 좋았던 점은?,choice,의사|간호사|시설
+a094d36f-dcc1-4b64-8aec-732ae9a72af0,bcf7373b-dea3-4527-a695-602c429581ba,종합 테스트 질문 평점형,rating,
+90266b15-0609-445b-8935-550cc07fb509,bcf7373b-dea3-4527-a695-602c429581ba,종합 테스트 질문 객관식,choice,옵션A|옵션B|옵션C
+2b180140-16cf-480b-a885-6cb70b16d4a7,eac2db48-c7b3-4e7e-aecb-8d6c3d700939,정상 질문,rating,

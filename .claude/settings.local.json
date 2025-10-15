@@ -3,7 +3,9 @@
     "allow": [
       "Bash(tree:*)",
       "Bash(pytest:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(uv add:*)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []
