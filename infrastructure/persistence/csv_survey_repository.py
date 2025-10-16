@@ -1,8 +1,12 @@
 import csv
+import logging
 from pathlib import Path
 from domain.entities.survey import Survey
 from domain.entities.question import Question
 from domain.repositories.survey_repository import SurveyRepository
+
+
+logger = logging.getLogger(__name__)
 
 
 class CsvSurveyRepository(SurveyRepository):
@@ -31,7 +35,7 @@ class CsvSurveyRepository(SurveyRepository):
 
         if not self.surveys_file.exists():
             with open(self.surveys_file, "w", newline="", encoding="utf-8-sig") as f:
-                writer = csv.DictWriter(f, fieldnames=["id", "title", "description", "created_at"])
+                writer = csv.DictWriter(f, fieldnames=["id", "tenant_id", "owner_id", "title", "description", "created_at"])
                 writer.writeheader()
 
         if not self.questions_file.exists():
@@ -46,8 +50,9 @@ class CsvSurveyRepository(SurveyRepository):
             survey: 저장할 설문 엔티티
         """
         with open(self.surveys_file, "a", newline="", encoding="utf-8-sig") as f:
-            writer = csv.DictWriter(f, fieldnames=["id", "title", "description", "created_at"])
+            writer = csv.DictWriter(f, fieldnames=["id", "tenant_id", "owner_id", "title", "description", "created_at"])
             writer.writerow(survey.to_dict())
+            f.flush()
 
     def save_question(self, question: Question) -> None:
         """질문을 CSV에 저장합니다.
@@ -58,6 +63,7 @@ class CsvSurveyRepository(SurveyRepository):
         with open(self.questions_file, "a", newline="", encoding="utf-8-sig") as f:
             writer = csv.DictWriter(f, fieldnames=["id", "survey_id", "text", "question_type", "options"])
             writer.writerow(question.to_dict())
+            f.flush()
 
     def find_survey_by_id(self, survey_id: str) -> Survey | None:
         """ID로 설문을 조회합니다.
@@ -68,12 +74,20 @@ class CsvSurveyRepository(SurveyRepository):
         Returns:
             설문 엔티티 또는 None
         """
+        survey_id = survey_id.strip()
+
         with open(self.surveys_file, "r", encoding="utf-8-sig") as f:
             reader = csv.DictReader(f)
             for row in reader:
-                if row["id"] == survey_id:
+                if not row or not row.get("id"):
+                    continue
+
+                row_id = row["id"].strip()
+                if row_id == survey_id:
                     questions = self.find_questions_by_survey_id(survey_id)
                     return Survey.from_dict(row, tuple(questions))
+
+        logger.warning(f"설문을 찾을 수 없습니다", extra={"survey_id": survey_id})
         return None
 
     def find_all_surveys(self) -> list[Survey]:

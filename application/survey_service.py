@@ -2,7 +2,9 @@ import uuid
 from datetime import datetime
 from domain.entities.survey import Survey
 from domain.entities.question import Question
+from domain.entities.user import User
 from domain.value_objects.types import QuestionType
+from domain.value_objects.result import Success, Failure, Result
 from domain.repositories.survey_repository import SurveyRepository
 
 
@@ -21,47 +23,58 @@ class SurveyService:
         """
         self.survey_repository = survey_repository
 
-    def create_survey(self, title: str, description: str) -> str:
+    def create_survey(self, user: User, title: str, description: str) -> Result[str, str]:
         """새 설문을 생성합니다.
 
         Args:
+            user: 사용자 엔티티
             title: 설문 제목
             description: 설문 설명
 
         Returns:
-            생성된 설문의 ID
+            Success[설문 ID] 또는 Failure[에러 메시지]
         """
+        if not user.role.can_create_survey():
+            return Failure("설문 생성 권한이 없습니다")
+
         survey_id = str(uuid.uuid4())
         survey = Survey(
             id=survey_id,
+            tenant_id=user.tenant_id,
+            owner_id=user.id,
             title=title,
             description=description,
             created_at=datetime.now(),
             questions=(),
         )
         self.survey_repository.save_survey(survey)
-        return survey_id
+        return Success(survey_id)
 
     def add_question(
-        self, survey_id: str, text: str, question_type: QuestionType, options: list[str] | None = None
-    ) -> str:
+        self, user: User, survey_id: str, text: str, question_type: QuestionType, options: list[str] | None = None
+    ) -> Result[str, str]:
         """설문에 질문을 추가합니다.
 
         Args:
+            user: 사용자 엔티티
             survey_id: 설문 식별자
             text: 질문 내용
             question_type: 질문 유형
             options: 객관식 선택지
 
         Returns:
-            생성된 질문의 ID
-
-        Raises:
-            ValueError: 설문을 찾을 수 없는 경우
+            Success[질문 ID] 또는 Failure[에러 메시지]
         """
         survey = self.survey_repository.find_survey_by_id(survey_id)
         if not survey:
-            raise ValueError(f"설문을 찾을 수 없습니다: {survey_id}")
+            return Failure(f"설문을 찾을 수 없습니다: {survey_id}")
+
+        if survey.tenant_id != user.tenant_id:
+            return Failure("다른 테넌트의 설문에 접근할 수 없습니다")
+
+        is_owner = survey.owner_id == user.id
+        if not user.role.can_manage_survey(is_owner):
+            return Failure("설문 관리 권한이 없습니다")
 
         question_id = str(uuid.uuid4())
         question = Question(
@@ -72,29 +85,35 @@ class SurveyService:
             options=tuple(options) if options else None,
         )
         self.survey_repository.save_question(question)
-        return question_id
+        return Success(question_id)
 
-    def get_survey(self, survey_id: str) -> Survey:
+    def get_survey(self, user: User, survey_id: str) -> Result[Survey, str]:
         """설문을 조회합니다.
 
         Args:
+            user: 사용자 엔티티
             survey_id: 설문 식별자
 
         Returns:
-            설문 엔티티
-
-        Raises:
-            ValueError: 설문을 찾을 수 없는 경우
+            Success[설문 엔티티] 또는 Failure[에러 메시지]
         """
         survey = self.survey_repository.find_survey_by_id(survey_id)
         if not survey:
-            raise ValueError(f"설문을 찾을 수 없습니다: {survey_id}")
-        return survey
+            return Failure(f"설문을 찾을 수 없습니다: {survey_id}")
 
-    def get_all_surveys(self) -> list[Survey]:
-        """모든 설문을 조회합니다.
+        if survey.tenant_id != user.tenant_id:
+            return Failure("다른 테넌트의 설문에 접근할 수 없습니다")
+
+        return Success(survey)
+
+    def get_surveys_by_user(self, user: User) -> list[Survey]:
+        """사용자가 접근 가능한 모든 설문을 조회합니다.
+
+        Args:
+            user: 사용자 엔티티
 
         Returns:
             설문 엔티티 목록
         """
-        return self.survey_repository.find_all_surveys()
+        all_surveys = self.survey_repository.find_all_surveys()
+        return [s for s in all_surveys if s.tenant_id == user.tenant_id]

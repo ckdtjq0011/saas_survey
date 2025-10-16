@@ -9,12 +9,16 @@ class Survey:
 
     Attributes:
         id: 설문 고유 식별자
+        tenant_id: 소속 테넌트 식별자
+        owner_id: 설문 소유자 식별자
         title: 설문 제목
         description: 설문 설명
         created_at: 생성 일시
         questions: 설문에 포함된 질문 목록
     """
     id: str
+    tenant_id: str
+    owner_id: str
     title: str
     description: str
     created_at: datetime
@@ -28,6 +32,10 @@ class Survey:
         """
         if not self.id:
             raise ValueError("설문 ID는 필수입니다")
+        if not self.tenant_id:
+            raise ValueError("테넌트 ID는 필수입니다")
+        if not self.owner_id:
+            raise ValueError("소유자 ID는 필수입니다")
         if not self.title or not self.title.strip():
             raise ValueError("설문 제목은 필수입니다")
         if not self.description or not self.description.strip():
@@ -41,6 +49,8 @@ class Survey:
         """
         return {
             "id": self.id,
+            "tenant_id": self.tenant_id,
+            "owner_id": self.owner_id,
             "title": self.title,
             "description": self.description,
             "created_at": self.created_at.isoformat(),
@@ -59,6 +69,8 @@ class Survey:
         """
         return cls(
             id=data["id"],
+            tenant_id=data.get("tenant_id", ""),
+            owner_id=data.get("owner_id", ""),
             title=data["title"],
             description=data["description"],
             created_at=datetime.fromisoformat(data["created_at"]),

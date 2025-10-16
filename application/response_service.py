@@ -2,6 +2,8 @@ import uuid
 from datetime import datetime
 from collections import Counter
 from domain.entities.response import Response
+from domain.entities.user import User
+from domain.value_objects.result import Success, Failure, Result
 from domain.repositories.response_repository import ResponseRepository
 from domain.repositories.survey_repository import SurveyRepository
 
@@ -24,20 +26,23 @@ class ResponseService:
         self.response_repository = response_repository
         self.survey_repository = survey_repository
 
-    def submit_response(self, survey_id: str, respondent_id: str, answers: dict[str, str]) -> None:
+    def submit_response(self, user: User, survey_id: str, answers: dict[str, str]) -> Result[None, str]:
         """설문 응답을 제출합니다.
 
         Args:
+            user: 사용자 엔티티
             survey_id: 설문 식별자
-            respondent_id: 응답자 식별자
             answers: 질문 ID와 답변의 딕셔너리
 
-        Raises:
-            ValueError: 설문을 찾을 수 없는 경우
+        Returns:
+            Success[None] 또는 Failure[에러 메시지]
         """
         survey = self.survey_repository.find_survey_by_id(survey_id)
         if not survey:
-            raise ValueError(f"설문을 찾을 수 없습니다: {survey_id}")
+            return Failure(f"설문을 찾을 수 없습니다: {survey_id}")
+
+        if survey.tenant_id != user.tenant_id:
+            return Failure("다른 테넌트의 설문에 접근할 수 없습니다")
 
         for question_id, answer in answers.items():
             response_id = str(uuid.uuid4())
@@ -46,26 +51,33 @@ class ResponseService:
                 survey_id=survey_id,
                 question_id=question_id,
                 answer=answer,
-                respondent_id=respondent_id,
+                respondent_id=user.id,
                 created_at=datetime.now(),
             )
             self.response_repository.save(response)
 
-    def get_survey_results(self, survey_id: str) -> dict[str, dict[str, int | float | list[str]]]:
+        return Success(None)
+
+    def get_survey_results(self, user: User, survey_id: str) -> Result[dict[str, dict[str, int | float | list[str]]], str]:
         """설문 결과를 조회합니다.
 
         Args:
+            user: 사용자 엔티티
             survey_id: 설문 식별자
 
         Returns:
-            질문 ID별 결과 통계
-
-        Raises:
-            ValueError: 설문을 찾을 수 없는 경우
+            Success[질문 ID별 결과 통계] 또는 Failure[에러 메시지]
         """
         survey = self.survey_repository.find_survey_by_id(survey_id)
         if not survey:
-            raise ValueError(f"설문을 찾을 수 없습니다: {survey_id}")
+            return Failure(f"설문을 찾을 수 없습니다: {survey_id}")
+
+        if survey.tenant_id != user.tenant_id:
+            return Failure("다른 테넌트의 설문에 접근할 수 없습니다")
+
+        is_owner = survey.owner_id == user.id
+        if not user.role.can_view_results(is_owner):
+            return Failure("결과 조회 권한이 없습니다")
 
         results = {}
         for question in survey.questions:
@@ -97,4 +109,4 @@ class ResponseService:
                     "answers": answers,
                 }
 
-        return results
+        return Success(results)

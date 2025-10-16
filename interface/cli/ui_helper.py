@@ -1,6 +1,10 @@
+import logging
 from dataclasses import dataclass
 from typing import ClassVar
 from enum import Enum
+
+
+logger = logging.getLogger(__name__)
 
 
 class MenuOption(Enum):
@@ -25,9 +29,9 @@ def print_header(title: str) -> None:
     Args:
         title: 헤더 제목
     """
-    print("\n" + UIConfig.SEPARATOR * UIConfig.LINE_WIDTH)
-    print(title.center(UIConfig.LINE_WIDTH))
-    print(UIConfig.SEPARATOR * UIConfig.LINE_WIDTH)
+    logger.info("\n" + UIConfig.SEPARATOR * UIConfig.LINE_WIDTH)
+    logger.info(title.center(UIConfig.LINE_WIDTH))
+    logger.info(UIConfig.SEPARATOR * UIConfig.LINE_WIDTH)
 
 
 def print_section(title: str) -> None:
@@ -36,21 +40,21 @@ def print_section(title: str) -> None:
     Args:
         title: 섹션 제목
     """
-    print(f"\n{title}")
-    print("-" * len(title))
+    logger.info(f"\n{title}")
+    logger.info("-" * len(title))
 
 
 def print_menu() -> None:
     """메인 메뉴를 출력합니다."""
     print_section("메뉴")
-    print("1. 설문 생성")
-    print("2. 질문 추가")
-    print("3. 설문 조회")
-    print("4. 설문 목록")
-    print("5. 응답 제출")
-    print("6. 결과 조회")
-    print("0. 종료")
-    print()
+    logger.info("1. 설문 생성")
+    logger.info("2. 질문 추가")
+    logger.info("3. 설문 조회")
+    logger.info("4. 설문 목록")
+    logger.info("5. 응답 제출")
+    logger.info("6. 결과 조회")
+    logger.info("0. 종료")
+    logger.info("")
 
 
 def get_input(prompt: str) -> str:
@@ -74,7 +78,7 @@ def get_multiline_input(prompt: str) -> str:
     Returns:
         사용자 입력 문자열
     """
-    print(f"{prompt} (종료: 빈 줄 입력)")
+    logger.info(f"{prompt} (종료: 빈 줄 입력)")
     lines = []
     while True:
         line = input()
@@ -90,7 +94,7 @@ def print_success(message: str) -> None:
     Args:
         message: 성공 메시지
     """
-    print(f"\n[성공] {message}")
+    logger.info(f"\n[성공] {message}")
 
 
 def print_error(message: str) -> None:
@@ -99,7 +103,7 @@ def print_error(message: str) -> None:
     Args:
         message: 에러 메시지
     """
-    print(f"\n[오류] {message}")
+    logger.error(f"\n[오류] {message}")
 
 
 def print_info(message: str) -> None:
@@ -108,7 +112,7 @@ def print_info(message: str) -> None:
     Args:
         message: 정보 메시지
     """
-    print(f"\n[정보] {message}")
+    logger.info(f"\n[정보] {message}")
 
 
 def confirm(prompt: str) -> bool:

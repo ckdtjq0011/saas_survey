@@ -44,6 +44,7 @@ class CsvResponseRepository(ResponseRepository):
                 f, fieldnames=["id", "survey_id", "question_id", "answer", "respondent_id", "created_at"]
             )
             writer.writerow(response.to_dict())
+            f.flush()
 
     def find_by_survey_id(self, survey_id: str) -> list[Response]:
         """설문 ID로 응답 목록을 조회합니다.
