@@ -117,66 +117,31 @@ class InteractiveCLI:
 
         menu_table_items = []
         menu_handlers = {}
-        item_num = 1
 
-        if self.current_user.role.can_create_survey():
-            menu_table_items.append((str(item_num), "설문 생성", "새로운 설문을 생성합니다"))
-            menu_handlers[str(item_num)] = lambda: self.survey_handler.create_survey_flow(self.current_user)
-            item_num += 1
+        menu_table_items.append(("1", "설문 목록 조회", "모든 설문 목록을 확인합니다"))
+        menu_handlers["1"] = lambda: self.survey_handler.list_surveys_flow(self.current_user)
 
-        if self.current_user.role.can_create_survey():
-            menu_table_items.append((str(item_num), "질문 추가", "기존 설문에 질문을 추가합니다"))
-            menu_handlers[str(item_num)] = lambda: self.survey_handler.add_question_flow(self.current_user)
-            item_num += 1
+        menu_table_items.append(("2", "응답 제출", "설문에 응답을 제출합니다"))
+        menu_handlers["2"] = lambda: self.response_handler.submit_response_flow(self.current_user)
 
-        if self.current_user.role.can_create_survey():
-            menu_table_items.append((str(item_num), "설문 수정", "기존 설문의 제목과 설명을 수정합니다"))
-            menu_handlers[str(item_num)] = lambda: self.survey_handler.update_survey_flow(self.current_user)
-            item_num += 1
-
-        if self.current_user.role.can_create_survey():
-            menu_table_items.append((str(item_num), "설문 삭제", "설문과 관련 응답을 삭제합니다"))
-            menu_handlers[str(item_num)] = lambda: self.survey_handler.delete_survey_flow(self.current_user)
-            item_num += 1
-
-        if self.current_user.role.can_create_survey():
-            menu_table_items.append((str(item_num), "질문 수정", "기존 질문의 내용을 수정합니다"))
-            menu_handlers[str(item_num)] = lambda: self.survey_handler.update_question_flow(self.current_user)
-            item_num += 1
-
-        if self.current_user.role.can_create_survey():
-            menu_table_items.append((str(item_num), "질문 삭제", "질문과 관련 응답을 삭제합니다"))
-            menu_handlers[str(item_num)] = lambda: self.survey_handler.delete_question_flow(self.current_user)
-            item_num += 1
-
-        menu_table_items.append((str(item_num), "설문 조회", "설문의 상세 정보를 확인합니다"))
-        menu_handlers[str(item_num)] = lambda: self.survey_handler.view_survey_flow(self.current_user)
-        item_num += 1
-
-        menu_table_items.append((str(item_num), "설문 목록", "모든 설문 목록을 확인합니다"))
-        menu_handlers[str(item_num)] = lambda: self.survey_handler.list_surveys_flow(self.current_user)
-        item_num += 1
-
-        menu_table_items.append((str(item_num), "응답 제출", "설문에 응답을 제출합니다"))
-        menu_handlers[str(item_num)] = lambda: self.response_handler.submit_response_flow(self.current_user)
-        item_num += 1
-
-        menu_table_items.append((str(item_num), "응답 수정", "제출한 응답을 수정합니다"))
-        menu_handlers[str(item_num)] = lambda: self.response_handler.update_response_flow(self.current_user)
-        item_num += 1
-
-        menu_table_items.append((str(item_num), "응답 삭제", "제출한 응답을 삭제합니다"))
-        menu_handlers[str(item_num)] = lambda: self.response_handler.delete_response_flow(self.current_user)
-        item_num += 1
-
+        next_num = 3
         if self.current_user.role.can_view_results(False):
-            menu_table_items.append((str(item_num), "결과 조회", "설문 응답 결과를 확인합니다"))
-            menu_handlers[str(item_num)] = lambda: self.response_handler.view_results_flow(self.current_user)
-            item_num += 1
+            menu_table_items.append((str(next_num), "결과 조회", "설문 응답 결과를 확인합니다"))
+            menu_handlers[str(next_num)] = lambda: self.response_handler.view_results_flow(self.current_user)
+            next_num += 1
 
-        menu_table_items.append((str(item_num), "로그아웃", "현재 세션에서 로그아웃합니다"))
-        menu_handlers[str(item_num)] = self._logout_flow
-        item_num += 1
+        if self.current_user.role.can_create_survey():
+            menu_table_items.append((str(next_num), "설문 관리", "설문 및 질문 관리 메뉴"))
+            survey_mgmt_num = str(next_num)
+            menu_handlers[survey_mgmt_num] = self._show_survey_management_menu
+            next_num += 1
+
+        menu_table_items.append((str(next_num), "응답 관리", "응답 수정 및 삭제"))
+        menu_handlers[str(next_num)] = self._show_response_management_menu
+        next_num += 1
+
+        menu_table_items.append((str(next_num), "로그아웃", "현재 세션에서 로그아웃합니다"))
+        menu_handlers[str(next_num)] = self._logout_flow
 
         menu_table_items.append(("0", "종료", "프로그램을 종료합니다"))
 
@@ -187,6 +152,76 @@ class InteractiveCLI:
         if choice == "0":
             self.ui.print_info("프로그램을 종료합니다")
             exit(0)
+        elif choice in menu_handlers:
+            menu_handlers[choice]()
+        else:
+            self.ui.print_error("잘못된 선택입니다")
+            self.ui.pause()
+
+    def _show_survey_management_menu(self) -> None:
+        """설문 관리 서브메뉴를 보여줍니다."""
+        if not self.current_user:
+            return
+
+        self.ui.print_section("설문 관리")
+
+        menu_table_items = [
+            ("1", "설문 생성", "새로운 설문을 생성합니다"),
+            ("2", "설문 조회", "설문의 상세 정보를 확인합니다"),
+            ("3", "설문 수정", "기존 설문의 제목과 설명을 수정합니다"),
+            ("4", "설문 삭제", "설문과 관련 응답을 삭제합니다"),
+            ("5", "질문 추가", "기존 설문에 질문을 추가합니다"),
+            ("6", "질문 수정", "기존 질문의 내용을 수정합니다"),
+            ("7", "질문 삭제", "질문과 관련 응답을 삭제합니다"),
+            ("0", "뒤로 가기", "메인 메뉴로 돌아갑니다")
+        ]
+
+        menu_handlers = {
+            "1": lambda: self.survey_handler.create_survey_flow(self.current_user),
+            "2": lambda: self.survey_handler.view_survey_flow(self.current_user),
+            "3": lambda: self.survey_handler.update_survey_flow(self.current_user),
+            "4": lambda: self.survey_handler.delete_survey_flow(self.current_user),
+            "5": lambda: self.survey_handler.add_question_flow(self.current_user),
+            "6": lambda: self.survey_handler.update_question_flow(self.current_user),
+            "7": lambda: self.survey_handler.delete_question_flow(self.current_user),
+        }
+
+        self.ui.print_menu(menu_table_items)
+
+        choice = self.ui.get_input("선택")
+
+        if choice == "0":
+            return
+        elif choice in menu_handlers:
+            menu_handlers[choice]()
+        else:
+            self.ui.print_error("잘못된 선택입니다")
+            self.ui.pause()
+
+    def _show_response_management_menu(self) -> None:
+        """응답 관리 서브메뉴를 보여줍니다."""
+        if not self.current_user:
+            return
+
+        self.ui.print_section("응답 관리")
+
+        menu_table_items = [
+            ("1", "응답 수정", "제출한 응답을 수정합니다"),
+            ("2", "응답 삭제", "제출한 응답을 삭제합니다"),
+            ("0", "뒤로 가기", "메인 메뉴로 돌아갑니다")
+        ]
+
+        menu_handlers = {
+            "1": lambda: self.response_handler.update_response_flow(self.current_user),
+            "2": lambda: self.response_handler.delete_response_flow(self.current_user),
+        }
+
+        self.ui.print_menu(menu_table_items)
+
+        choice = self.ui.get_input("선택")
+
+        if choice == "0":
+            return
         elif choice in menu_handlers:
             menu_handlers[choice]()
         else:
