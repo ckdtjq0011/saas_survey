@@ -8,7 +8,7 @@ from interface.cli.interactive_cli import InteractiveCLI
 app = typer.Typer(
     name="설문조사 시스템",
     help="멀티테넌트 설문조사 플랫폼 CLI",
-    add_completion=True
+    add_completion=False
 )
 
 console = Console()

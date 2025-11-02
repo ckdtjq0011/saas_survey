@@ -5,9 +5,12 @@
       "Bash(pytest:*)",
       "Bash(python:*)",
       "Bash(uv add:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(nul)",
+      "Bash(echo:*)"
     ],
     "deny": [],
     "ask": []
-  }
+  },
+  "outputStyle": "default"
 }
