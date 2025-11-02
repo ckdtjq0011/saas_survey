@@ -4,6 +4,7 @@ from domain.entities.user import User
 from interface.cli.commands import Commands
 from interface.cli.session_manager import SessionManager
 from interface.cli.ui_helper import (
+    ConsoleUI,
     print_header,
     print_section,
     get_input,
@@ -38,6 +39,7 @@ class InteractiveCLI:
         self.session_manager = SessionManager()
         self.current_user: User | None = None
         self.api_key: str | None = None
+        self.ui = ConsoleUI()
 
     def run(self) -> None:
         """CLI 애플리케이션을 실행합니다."""
@@ -77,15 +79,16 @@ class InteractiveCLI:
 
     def _show_guest_menu(self) -> None:
         """로그인하지 않은 상태의 메뉴를 보여줍니다."""
-        print_section("메뉴")
-        logger.info("1. 테넌트 등록")
-        logger.info("2. 테넌트 목록 조회")
-        logger.info("3. 사용자 등록")
-        logger.info("4. 로그인")
-        logger.info("0. 종료")
-        logger.info("")
+        menu_items = [
+            ("1", "테넌트 등록", "새로운 테넌트(조직)를 등록합니다"),
+            ("2", "테넌트 목록 조회", "등록된 테넌트 목록을 확인합니다"),
+            ("3", "사용자 등록", "테넌트에 새 사용자를 등록합니다"),
+            ("4", "로그인", "사용자 계정으로 로그인합니다"),
+            ("0", "종료", "프로그램을 종료합니다"),
+        ]
+        self.ui.print_menu(menu_items)
 
-        choice = get_input("선택")
+        choice = self.ui.get_input("선택")
 
         if choice == "1":
             self._register_tenant_flow()
@@ -107,50 +110,55 @@ class InteractiveCLI:
         if not self.current_user:
             return
 
-        print_section(f"메뉴 (사용자: {self.current_user.username}, 역할: {self.current_user.role.value})")
+        tenant_result = self.commands.tenant_repo.find_tenant_by_id(self.current_user.tenant_id)
+        tenant_name = tenant_result.name if tenant_result else "알 수 없음"
 
-        menu_items = []
+        self.ui.print_user_info(
+            self.current_user.username,
+            self.current_user.role.value,
+            tenant_name
+        )
+
+        menu_table_items = []
         menu_handlers = {}
         item_num = 1
 
         if self.current_user.role.can_create_survey():
-            menu_items.append(f"{item_num}. 설문 생성")
+            menu_table_items.append((str(item_num), "설문 생성", "새로운 설문을 생성합니다"))
             menu_handlers[str(item_num)] = self._create_survey_flow
             item_num += 1
 
         if self.current_user.role.can_create_survey():
-            menu_items.append(f"{item_num}. 질문 추가")
+            menu_table_items.append((str(item_num), "질문 추가", "기존 설문에 질문을 추가합니다"))
             menu_handlers[str(item_num)] = self._add_question_flow
             item_num += 1
 
-        menu_items.append(f"{item_num}. 설문 조회")
+        menu_table_items.append((str(item_num), "설문 조회", "설문의 상세 정보를 확인합니다"))
         menu_handlers[str(item_num)] = self._view_survey_flow
         item_num += 1
 
-        menu_items.append(f"{item_num}. 설문 목록")
+        menu_table_items.append((str(item_num), "설문 목록", "모든 설문 목록을 확인합니다"))
         menu_handlers[str(item_num)] = self._list_surveys_flow
         item_num += 1
 
-        menu_items.append(f"{item_num}. 응답 제출")
+        menu_table_items.append((str(item_num), "응답 제출", "설문에 응답을 제출합니다"))
         menu_handlers[str(item_num)] = self._submit_response_flow
         item_num += 1
 
         if self.current_user.role.can_view_results(False):
-            menu_items.append(f"{item_num}. 결과 조회")
+            menu_table_items.append((str(item_num), "결과 조회", "설문 응답 결과를 확인합니다"))
             menu_handlers[str(item_num)] = self._view_results_flow
             item_num += 1
 
-        menu_items.append(f"{item_num}. 로그아웃")
+        menu_table_items.append((str(item_num), "로그아웃", "현재 세션에서 로그아웃합니다"))
         menu_handlers[str(item_num)] = self._logout_flow
         item_num += 1
 
-        menu_items.append("0. 종료")
+        menu_table_items.append(("0", "종료", "프로그램을 종료합니다"))
 
-        for item in menu_items:
-            logger.info(item)
-        logger.info("")
+        self.ui.print_menu(menu_table_items)
 
-        choice = get_input("선택")
+        choice = self.ui.get_input("선택")
 
         if choice == "0":
             print_info("프로그램을 종료합니다")
@@ -189,23 +197,14 @@ class InteractiveCLI:
             print_section("테넌트 목록")
 
             tenants = self.commands.list_tenants()
+            self.ui.print_tenants_table(tenants)
 
-            if not tenants:
-                print_info("등록된 테넌트가 없습니다")
-            else:
-                logger.info(f"\n총 {len(tenants)}개의 테넌트:")
-                for idx, tenant in enumerate(tenants, 1):
-                    status = "활성" if tenant['is_active'] == "True" else "비활성"
-                    logger.info(f"\n[{idx}] {tenant['name']} ({status})")
-                    logger.info(f"    ID: {tenant['id']}")
-                    logger.info(f"    생성일: {tenant['created_at']}")
-
-            pause()
+            self.ui.pause()
 
         except Exception:
             logger.exception("테넌트 목록 조회 중 오류 발생")
             print_error("테넌트 목록 조회 중 오류가 발생했습니다")
-            pause()
+            self.ui.pause()
 
     def _register_user_flow(self) -> None:
         """사용자 등록 플로우를 실행합니다."""
@@ -495,22 +494,28 @@ class InteractiveCLI:
             success, error, survey_data = self.commands.get_survey(self.current_user, survey_id)
             if not success or not survey_data:
                 print_error(f"설문 조회 실패: {error}")
-                pause()
+                self.ui.pause()
                 return
 
-            logger.info(f"\n제목: {survey_data['title']}")
-            logger.info(f"설명: {survey_data['description']}")
-            logger.info(f"생성일: {survey_data['created_at']}")
-            logger.info(f"\n질문 목록 (총 {len(survey_data['questions'])}개):")
+            self.ui.console.print(f"\n[bold cyan]제목:[/bold cyan] {survey_data['title']}")
+            self.ui.console.print(f"[bold cyan]설명:[/bold cyan] {survey_data['description']}")
+            self.ui.console.print(f"[bold cyan]생성일:[/bold cyan] {survey_data['created_at']}")
+            self.ui.console.print()
 
-            for idx, question in enumerate(survey_data['questions'], 1):
-                logger.info(f"\n[{idx}] {question['text']}")
-                logger.info(f"    ID: {question['id']}")
-                logger.info(f"    유형: {question['type']}")
-                if question['options']:
-                    logger.info(f"    선택지: {', '.join(question['options'])}")
+            if survey_data['questions']:
+                questions_data = []
+                for question in survey_data['questions']:
+                    questions_data.append({
+                        "text": question['text'],
+                        "question_type": question['type'],
+                        "options": question.get('options', [])
+                    })
 
-            pause()
+                self.ui.print_questions_tree(survey_data['title'], questions_data)
+            else:
+                self.ui.print_info("질문이 없습니다")
+
+            self.ui.pause()
 
         except Exception:
             logger.exception("설문 조회 중 오류 발생")
@@ -528,22 +533,32 @@ class InteractiveCLI:
             surveys = self.commands.list_surveys(self.current_user)
 
             if not surveys:
-                print_info("등록된 설문이 없습니다")
+                self.ui.print_info("등록된 설문이 없습니다")
             else:
-                logger.info(f"\n총 {len(surveys)}개의 설문:")
-                for idx, survey in enumerate(surveys, 1):
-                    owner_marker = " [내 설문]" if survey['owner_id'] == self.current_user.id else ""
-                    logger.info(f"\n[{idx}] {survey['title']}{owner_marker}")
-                    logger.info(f"    ID: {survey['id']}")
-                    logger.info(f"    설명: {survey['description']}")
-                    logger.info(f"    질문 수: {survey['question_count']}개")
+                survey_table_data = []
+                for survey in surveys:
+                    owner_id = survey.get('owner_id', '')
+                    owner_marker = " [내 설문]" if owner_id == self.current_user.id else ""
 
-            pause()
+                    owner_user = self.commands.user_repo.find_user_by_id(owner_id)
+                    owner_name = owner_user.username if owner_user else "알 수 없음"
+
+                    survey_table_data.append({
+                        "id": survey.get('id', ''),
+                        "title": survey.get('title', '제목 없음') + owner_marker,
+                        "owner": owner_name,
+                        "question_count": survey.get('question_count', 0),
+                        "created_at": survey.get('created_at', '')
+                    })
+
+                self.ui.print_surveys_table(survey_table_data)
+
+            self.ui.pause()
 
         except Exception:
             logger.exception("설문 목록 조회 중 오류 발생")
             print_error("설문 목록 조회 중 오류가 발생했습니다")
-            pause()
+            self.ui.pause()
 
     def _submit_response_flow(self) -> None:
         """응답 제출 플로우를 실행합니다."""
@@ -659,28 +674,31 @@ class InteractiveCLI:
 
             if not success or not results:
                 print_error(f"결과 조회 실패: {error}")
-                pause()
+                self.ui.pause()
                 return
 
-            logger.info("\n설문 결과:")
+            results_data = []
             for question_id, stats in results.items():
-                logger.info(f"\n질문: {stats['question']}")
-                logger.info(f"총 응답 수: {stats['count']}개")
-
-                if 'average' in stats:
-                    logger.info(f"평균 평점: {stats['average']:.2f}")
+                result_item = {
+                    "question": stats['question'],
+                }
 
                 if 'distribution' in stats:
-                    logger.info("응답 분포:")
-                    for answer, count in stats['distribution'].items():
-                        logger.info(f"  {answer}: {count}개")
-
-                if 'answers' in stats:
-                    logger.info("텍스트 응답:")
+                    result_item["answer_distribution"] = stats['distribution']
+                elif 'answers' in stats:
+                    answer_counts = {}
                     for text in stats['answers']:
-                        logger.info(f"  - {text}")
+                        answer_counts[text] = answer_counts.get(text, 0) + 1
+                    result_item["answer_distribution"] = answer_counts
+                else:
+                    result_item["answer_distribution"] = {}
 
-            pause()
+                results_data.append(result_item)
+
+            self.ui.console.print("\n[bold green]설문 결과[/bold green]\n")
+            self.ui.print_results_table(results_data)
+
+            self.ui.pause()
 
         except Exception:
             logger.exception("결과 조회 중 오류 발생")
