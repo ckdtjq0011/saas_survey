@@ -112,6 +112,10 @@ class AuthService:
         Returns:
             Success[API 키] 또는 Failure[에러 메시지]
         """
+        tenant = self.tenant_repository.find_tenant_by_id(tenant_id)
+        if not tenant or not tenant.is_active:
+            return Failure("비활성화된 사용자입니다")
+
         user = self.user_repository.find_user_by_username(username, tenant_id)
         if not user:
             return Failure("사용자명 또는 비밀번호가 올바르지 않습니다")

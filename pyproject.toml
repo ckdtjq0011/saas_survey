@@ -7,7 +7,9 @@ requires-python = ">=3.12"
 dependencies = [
     "bcrypt>=4.2.0",
     "fastapi>=0.119.0",
+    "httpx>=0.28.1",
     "loguru>=0.7.3",
+    "pytest-cov>=7.0.0",
     "requests>=2.32.5",
     "rich>=14.2.0",
     "typer>=0.20.0",

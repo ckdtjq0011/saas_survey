@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from application.response_service import ResponseService
-from interface.api.dependencies import get_response_service
+from domain.entities.user import User
+from interface.api.dependencies import get_response_service, get_anonymous_user
 from interface.api.schemas.response import (
     SubmitResponseRequest,
     SubmitResponseResponse,
@@ -55,7 +56,8 @@ router = APIRouter(prefix="/surveys", tags=["responses"])
 def submit_response(
     survey_id: str,
     request: SubmitResponseRequest,
-    service: ResponseService = Depends(get_response_service)
+    service: ResponseService = Depends(get_response_service),
+    user: User = Depends(get_anonymous_user)
 ) -> SubmitResponseResponse:
     """응답을 제출합니다.
 
@@ -63,6 +65,7 @@ def submit_response(
         survey_id: 설문 ID
         request: 응답 제출 요청
         service: 응답 서비스
+        user: 익명 사용자
 
     Returns:
         응답 제출 응답
@@ -71,8 +74,15 @@ def submit_response(
         HTTPException: 설문을 찾을 수 없거나 응답 제출 실패 시
     """
     try:
-        service.submit_response(survey_id, request.respondent_id, request.answers)
+        result = service.submit_response(user, survey_id, request.answers)
+        if result.is_failure():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=result.error
+            )
         return SubmitResponseResponse(respondent_id=request.respondent_id)
+    except HTTPException:
+        raise
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -144,13 +154,15 @@ def submit_response(
 )
 def get_survey_results(
     survey_id: str,
-    service: ResponseService = Depends(get_response_service)
+    service: ResponseService = Depends(get_response_service),
+    user: User = Depends(get_anonymous_user)
 ) -> SurveyResultsResponse:
     """설문 결과를 조회합니다.
 
     Args:
         survey_id: 설문 ID
         service: 응답 서비스
+        user: 익명 사용자
 
     Returns:
         설문 결과 응답
@@ -159,18 +171,26 @@ def get_survey_results(
         HTTPException: 설문을 찾을 수 없거나 결과 조회 실패 시
     """
     try:
-        results = service.get_survey_results(survey_id)
+        result = service.get_survey_results(user, survey_id)
+        if result.is_failure():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=result.error
+            )
+        results = result.value
         formatted_results = {}
-        for question_id, result in results.items():
+        for question_id, res in results.items():
             formatted_results[question_id] = QuestionResultResponse(
-                question=result["question"],
-                type=result["type"],
-                count=result["count"],
-                average=result.get("average"),
-                distribution=result.get("distribution"),
-                answers=result.get("answers")
+                question=res["question"],
+                type=res["type"],
+                count=res["count"],
+                average=res.get("average"),
+                distribution=res.get("distribution"),
+                answers=res.get("answers")
             )
         return SurveyResultsResponse(survey_id=survey_id, results=formatted_results)
+    except HTTPException:
+        raise
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

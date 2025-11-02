@@ -100,8 +100,14 @@ class CsvSurveyRepository(SurveyRepository):
         with open(self.surveys_file, "r", encoding="utf-8-sig") as f:
             reader = csv.DictReader(f)
             for row in reader:
-                questions = self.find_questions_by_survey_id(row["id"])
-                surveys.append(Survey.from_dict(row, tuple(questions)))
+                if not row or not row.get("id"):
+                    continue
+                try:
+                    questions = self.find_questions_by_survey_id(row["id"])
+                    surveys.append(Survey.from_dict(row, tuple(questions)))
+                except (KeyError, ValueError) as e:
+                    logger.warning(f"손상된 설문 데이터를 건너뜁니다", extra={"error": str(e), "row": row})
+                    continue
         return surveys
 
     def find_questions_by_survey_id(self, survey_id: str) -> list[Question]:
@@ -117,8 +123,14 @@ class CsvSurveyRepository(SurveyRepository):
         with open(self.questions_file, "r", encoding="utf-8-sig") as f:
             reader = csv.DictReader(f)
             for row in reader:
-                if row["survey_id"] == survey_id:
-                    questions.append(Question.from_dict(row))
+                if not row or not row.get("survey_id"):
+                    continue
+                try:
+                    if row["survey_id"] == survey_id:
+                        questions.append(Question.from_dict(row))
+                except (KeyError, ValueError) as e:
+                    logger.warning(f"손상된 질문 데이터를 건너뜁니다", extra={"error": str(e), "row": row})
+                    continue
         return questions
 
     def find_by_owner_id(self, owner_id: str) -> list[Survey]:
@@ -218,6 +230,7 @@ class CsvSurveyRepository(SurveyRepository):
         Raises:
             ValueError: 질문을 찾을 수 없는 경우
         """
+        OPTIONS_DELIMITER = "\x1f"
         question_id = question_id.strip()
         rows = []
         found = False
@@ -232,7 +245,10 @@ class CsvSurveyRepository(SurveyRepository):
                     found = True
                     for key, value in updates.items():
                         if key in row:
-                            row[key] = str(value)
+                            if key == "options" and isinstance(value, (list, tuple)):
+                                row[key] = OPTIONS_DELIMITER.join(value)
+                            else:
+                                row[key] = str(value)
                 rows.append(row)
 
         if not found:

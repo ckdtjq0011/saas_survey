@@ -106,6 +106,149 @@ class ResponseHandler(BaseHandler):
             self.ui.print_error("잘못된 입력입니다")
             return None
 
+    def update_response_flow(self, user: User) -> None:
+        """응답 수정 플로우를 실행합니다.
+
+        Args:
+            user: 현재 로그인한 사용자
+        """
+        try:
+            self.ui.print_section("응답 수정")
+
+            survey_id = self._select_survey(user)
+            if not survey_id:
+                return
+
+            response_id, response_data = self._select_response(user, survey_id)
+            if not response_id:
+                return
+
+            self.ui.print_info(f"현재 답변: {response_data['answer']}")
+            self.ui.print_info("")
+
+            answer = self.ui.get_input("새 답변")
+
+            if self.confirm_operation("응답을 수정하시겠습니까?"):
+                success, error = self.commands.update_response(user, response_id, answer)
+                if success:
+                    self.ui.print_success("응답이 수정되었습니다")
+                else:
+                    self.ui.print_error(f"응답 수정 실패: {error}")
+
+        except Exception as e:
+            self.handle_error("응답 수정", e)
+        finally:
+            self.ui.pause()
+
+    def delete_response_flow(self, user: User) -> None:
+        """응답 삭제 플로우를 실행합니다.
+
+        Args:
+            user: 현재 로그인한 사용자
+        """
+        try:
+            self.ui.print_section("응답 삭제")
+
+            survey_id = self._select_survey(user)
+            if not survey_id:
+                return
+
+            response_id, response_data = self._select_response(user, survey_id)
+            if not response_id:
+                return
+
+            self.ui.print_warning(f"질문: {response_data['question_text']}")
+            self.ui.print_warning(f"답변: {response_data['answer']}")
+            self.ui.print_info("")
+
+            if self.confirm_operation("정말로 응답을 삭제하시겠습니까?"):
+                success, error = self.commands.delete_response(user, response_id)
+                if success:
+                    self.ui.print_success("응답이 삭제되었습니다")
+                else:
+                    self.ui.print_error(f"응답 삭제 실패: {error}")
+
+        except Exception as e:
+            self.handle_error("응답 삭제", e)
+        finally:
+            self.ui.pause()
+
+    def _select_survey(self, user: User) -> str | None:
+        """설문을 선택합니다.
+
+        Args:
+            user: 현재 로그인한 사용자
+
+        Returns:
+            선택된 설문 ID, 취소 시 None
+        """
+        surveys = self.commands.list_surveys(user)
+
+        if not surveys:
+            self.ui.print_info("설문이 없습니다")
+            return None
+
+        self.ui.print_surveys_table(surveys)
+
+        try:
+            choice = self.ui.get_int_input("설문 번호", default=1)
+            if 1 <= choice <= len(surveys):
+                return surveys[choice - 1]["id"]
+            else:
+                self.ui.print_error("잘못된 선택입니다")
+                return None
+        except (ValueError, IndexError):
+            self.ui.print_error("잘못된 입력입니다")
+            return None
+
+    def _select_response(self, user: User, survey_id: str) -> tuple[str | None, dict | None]:
+        """응답을 선택합니다.
+
+        Args:
+            user: 현재 로그인한 사용자
+            survey_id: 설문 ID
+
+        Returns:
+            (선택된 응답 ID, 응답 데이터) 튜플, 취소 시 (None, None)
+        """
+        success, error, survey_data = self.commands.get_survey(user, survey_id)
+        if not success or not survey_data:
+            self.ui.print_error(f"설문 조회 실패: {error}")
+            return None, None
+
+        user_responses = []
+        for question in survey_data["questions"]:
+            q_id = question["id"]
+            q_text = question["text"]
+
+            responses = self.commands.response_service.response_repository.find_by_question_id(q_id)
+            for response in responses:
+                if response.respondent_id == user.id:
+                    user_responses.append({
+                        "id": response.id,
+                        "question_text": q_text,
+                        "answer": response.answer,
+                    })
+
+        if not user_responses:
+            self.ui.print_info("제출한 응답이 없습니다")
+            return None, None
+
+        self.ui.print_info("제출한 응답 목록:")
+        for idx, resp in enumerate(user_responses, 1):
+            self.ui.print_info(f"{idx}. {resp['question_text']}: {resp['answer']}")
+
+        try:
+            choice = self.ui.get_int_input("응답 번호", default=1)
+            if 1 <= choice <= len(user_responses):
+                return user_responses[choice - 1]["id"], user_responses[choice - 1]
+            else:
+                self.ui.print_error("잘못된 선택입니다")
+                return None, None
+        except (ValueError, IndexError):
+            self.ui.print_error("잘못된 입력입니다")
+            return None, None
+
     def _collect_answers(self, questions: list[dict]) -> dict[str, str] | None:
         """질문에 대한 답변을 수집합니다.
 

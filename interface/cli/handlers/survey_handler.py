@@ -159,6 +159,230 @@ class SurveyHandler(BaseHandler):
             self.ui.print_error("잘못된 입력입니다")
             return None
 
+    def update_survey_flow(self, user: User) -> None:
+        """설문 수정 플로우를 실행합니다.
+
+        Args:
+            user: 현재 로그인한 사용자
+        """
+        try:
+            self.ui.print_section("설문 수정")
+
+            survey_id = self._select_survey(user)
+            if not survey_id:
+                return
+
+            success, error, survey_data = self.commands.get_survey(user, survey_id)
+            if not success or not survey_data:
+                self.ui.print_error(f"설문 조회 실패: {error}")
+                return
+
+            self.ui.print_info(f"현재 제목: {survey_data['title']}")
+            self.ui.print_info(f"현재 설명: {survey_data['description']}")
+            self.ui.print_info("")
+
+            title = self.ui.get_validated_input(
+                "새 제목 (3-100자)", validate_survey_title
+            )
+            description = self.ui.get_input("새 설명")
+
+            if self.confirm_operation("설문을 수정하시겠습니까?"):
+                success, error = self.commands.update_survey(user, survey_id, title, description)
+                if success:
+                    self.ui.print_success("설문이 수정되었습니다")
+                else:
+                    self.ui.print_error(f"설문 수정 실패: {error}")
+
+        except ValueError as e:
+            self.ui.print_error(str(e))
+        except Exception as e:
+            self.handle_error("설문 수정", e)
+        finally:
+            self.ui.pause()
+
+    def delete_survey_flow(self, user: User) -> None:
+        """설문 삭제 플로우를 실행합니다.
+
+        Args:
+            user: 현재 로그인한 사용자
+        """
+        try:
+            self.ui.print_section("설문 삭제")
+
+            survey_id = self._select_survey(user)
+            if not survey_id:
+                return
+
+            success, error, survey_data = self.commands.get_survey(user, survey_id)
+            if not success or not survey_data:
+                self.ui.print_error(f"설문 조회 실패: {error}")
+                return
+
+            self.ui.print_warning(f"설문: {survey_data['title']}")
+            self.ui.print_warning(f"질문 수: {len(survey_data['questions'])}")
+            self.ui.print_warning("이 설문과 관련된 모든 응답도 함께 삭제됩니다")
+            self.ui.print_info("")
+
+            if self.confirm_operation("정말로 설문을 삭제하시겠습니까?"):
+                success, error = self.commands.delete_survey(user, survey_id)
+                if success:
+                    self.ui.print_success("설문이 삭제되었습니다")
+                else:
+                    self.ui.print_error(f"설문 삭제 실패: {error}")
+
+        except Exception as e:
+            self.handle_error("설문 삭제", e)
+        finally:
+            self.ui.pause()
+
+    def update_question_flow(self, user: User) -> None:
+        """질문 수정 플로우를 실행합니다.
+
+        Args:
+            user: 현재 로그인한 사용자
+        """
+        try:
+            self.ui.print_section("질문 수정")
+
+            survey_id = self._select_survey(user)
+            if not survey_id:
+                return
+
+            question_id, question_data = self._select_question(user, survey_id)
+            if not question_id:
+                return
+
+            self.ui.print_info(f"현재 질문: {question_data['text']}")
+            self.ui.print_info(f"현재 유형: {question_data['type']}")
+            if question_data.get("options"):
+                self.ui.print_info(f"현재 선택지: {', '.join(question_data['options'])}")
+            self.ui.print_info("")
+
+            text = self.ui.get_validated_input(
+                "새 질문 내용 (5-500자)", validate_question_text
+            )
+
+            options = None
+            if question_data["type"] == QuestionType.MULTIPLE_CHOICE.value:
+                if self.confirm_operation("선택지도 수정하시겠습니까?"):
+                    options = self._get_multiple_choice_options()
+
+            if self.confirm_operation("질문을 수정하시겠습니까?"):
+                success, error = self.commands.update_question(user, question_id, text, options)
+                if success:
+                    self.ui.print_success("질문이 수정되었습니다")
+                else:
+                    self.ui.print_error(f"질문 수정 실패: {error}")
+
+        except ValueError as e:
+            self.ui.print_error(str(e))
+        except Exception as e:
+            self.handle_error("질문 수정", e)
+        finally:
+            self.ui.pause()
+
+    def delete_question_flow(self, user: User) -> None:
+        """질문 삭제 플로우를 실행합니다.
+
+        Args:
+            user: 현재 로그인한 사용자
+        """
+        try:
+            self.ui.print_section("질문 삭제")
+
+            survey_id = self._select_survey(user)
+            if not survey_id:
+                return
+
+            question_id, question_data = self._select_question(user, survey_id)
+            if not question_id:
+                return
+
+            self.ui.print_warning(f"질문: {question_data['text']}")
+            self.ui.print_warning("이 질문과 관련된 모든 응답도 함께 삭제됩니다")
+            self.ui.print_info("")
+
+            if self.confirm_operation("정말로 질문을 삭제하시겠습니까?"):
+                success, error = self.commands.delete_question(user, question_id)
+                if success:
+                    self.ui.print_success("질문이 삭제되었습니다")
+                else:
+                    self.ui.print_error(f"질문 삭제 실패: {error}")
+
+        except Exception as e:
+            self.handle_error("질문 삭제", e)
+        finally:
+            self.ui.pause()
+
+    def _select_survey(self, user: User) -> str | None:
+        """설문을 선택합니다.
+
+        Args:
+            user: 현재 로그인한 사용자
+
+        Returns:
+            선택된 설문 ID, 취소 시 None
+        """
+        surveys = self.commands.list_surveys(user)
+
+        if not surveys:
+            self.ui.print_info("설문이 없습니다")
+            return None
+
+        self.ui.print_surveys_table(surveys)
+
+        try:
+            choice = self.ui.get_int_input("설문 번호", default=1)
+            if 1 <= choice <= len(surveys):
+                return surveys[choice - 1]["id"]
+            else:
+                self.ui.print_error("잘못된 선택입니다")
+                return None
+        except (ValueError, IndexError):
+            self.ui.print_error("잘못된 입력입니다")
+            return None
+
+    def _select_question(self, user: User, survey_id: str) -> tuple[str | None, dict | None]:
+        """질문을 선택합니다.
+
+        Args:
+            user: 현재 로그인한 사용자
+            survey_id: 설문 ID
+
+        Returns:
+            (선택된 질문 ID, 질문 데이터) 튜플, 취소 시 (None, None)
+        """
+        success, error, survey_data = self.commands.get_survey(user, survey_id)
+        if not success or not survey_data:
+            self.ui.print_error(f"설문 조회 실패: {error}")
+            return None, None
+
+        questions = survey_data["questions"]
+        if not questions:
+            self.ui.print_info("질문이 없습니다")
+            return None, None
+
+        questions_display = [
+            {
+                "text": q["text"],
+                "question_type": q["type"],
+                "options": q["options"],
+            }
+            for q in questions
+        ]
+        self.ui.print_questions_tree(survey_data["title"], questions_display)
+
+        try:
+            choice = self.ui.get_int_input("질문 번호", default=1)
+            if 1 <= choice <= len(questions):
+                return questions[choice - 1]["id"], questions[choice - 1]
+            else:
+                self.ui.print_error("잘못된 선택입니다")
+                return None, None
+        except (ValueError, IndexError):
+            self.ui.print_error("잘못된 입력입니다")
+            return None, None
+
     def _get_multiple_choice_options(self) -> list[str]:
         """객관식 선택지를 입력받습니다.
 

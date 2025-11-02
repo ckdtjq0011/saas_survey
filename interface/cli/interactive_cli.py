@@ -129,6 +129,26 @@ class InteractiveCLI:
             menu_handlers[str(item_num)] = lambda: self.survey_handler.add_question_flow(self.current_user)
             item_num += 1
 
+        if self.current_user.role.can_create_survey():
+            menu_table_items.append((str(item_num), "설문 수정", "기존 설문의 제목과 설명을 수정합니다"))
+            menu_handlers[str(item_num)] = lambda: self.survey_handler.update_survey_flow(self.current_user)
+            item_num += 1
+
+        if self.current_user.role.can_create_survey():
+            menu_table_items.append((str(item_num), "설문 삭제", "설문과 관련 응답을 삭제합니다"))
+            menu_handlers[str(item_num)] = lambda: self.survey_handler.delete_survey_flow(self.current_user)
+            item_num += 1
+
+        if self.current_user.role.can_create_survey():
+            menu_table_items.append((str(item_num), "질문 수정", "기존 질문의 내용을 수정합니다"))
+            menu_handlers[str(item_num)] = lambda: self.survey_handler.update_question_flow(self.current_user)
+            item_num += 1
+
+        if self.current_user.role.can_create_survey():
+            menu_table_items.append((str(item_num), "질문 삭제", "질문과 관련 응답을 삭제합니다"))
+            menu_handlers[str(item_num)] = lambda: self.survey_handler.delete_question_flow(self.current_user)
+            item_num += 1
+
         menu_table_items.append((str(item_num), "설문 조회", "설문의 상세 정보를 확인합니다"))
         menu_handlers[str(item_num)] = lambda: self.survey_handler.view_survey_flow(self.current_user)
         item_num += 1
@@ -139,6 +159,14 @@ class InteractiveCLI:
 
         menu_table_items.append((str(item_num), "응답 제출", "설문에 응답을 제출합니다"))
         menu_handlers[str(item_num)] = lambda: self.response_handler.submit_response_flow(self.current_user)
+        item_num += 1
+
+        menu_table_items.append((str(item_num), "응답 수정", "제출한 응답을 수정합니다"))
+        menu_handlers[str(item_num)] = lambda: self.response_handler.update_response_flow(self.current_user)
+        item_num += 1
+
+        menu_table_items.append((str(item_num), "응답 삭제", "제출한 응답을 삭제합니다"))
+        menu_handlers[str(item_num)] = lambda: self.response_handler.delete_response_flow(self.current_user)
         item_num += 1
 
         if self.current_user.role.can_view_results(False):

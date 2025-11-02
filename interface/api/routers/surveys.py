@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from application.survey_service import SurveyService
+from domain.entities.user import User
 from domain.value_objects.types import QuestionType
-from interface.api.dependencies import get_survey_service
+from interface.api.dependencies import get_survey_service, get_anonymous_user
 from interface.api.schemas.survey import (
     CreateSurveyRequest,
     CreateSurveyResponse,
@@ -46,13 +47,15 @@ router = APIRouter(prefix="/surveys", tags=["surveys"])
 )
 def create_survey(
     request: CreateSurveyRequest,
-    service: SurveyService = Depends(get_survey_service)
+    service: SurveyService = Depends(get_survey_service),
+    user: User = Depends(get_anonymous_user)
 ) -> CreateSurveyResponse:
     """설문을 생성합니다.
 
     Args:
         request: 설문 생성 요청
         service: 설문 서비스
+        user: 익명 사용자
 
     Returns:
         설문 생성 응답
@@ -61,8 +64,15 @@ def create_survey(
         HTTPException: 설문 생성 실패 시
     """
     try:
-        survey_id = service.create_survey(request.title, request.description)
-        return CreateSurveyResponse(survey_id=survey_id)
+        result = service.create_survey(user, request.title, request.description)
+        if result.is_failure():
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=result.error
+            )
+        return CreateSurveyResponse(survey_id=result.value)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -96,12 +106,14 @@ def create_survey(
     """
 )
 def list_surveys(
-    service: SurveyService = Depends(get_survey_service)
+    service: SurveyService = Depends(get_survey_service),
+    user: User = Depends(get_anonymous_user)
 ) -> SurveyListResponse:
     """설문 목록을 조회합니다.
 
     Args:
         service: 설문 서비스
+        user: 익명 사용자
 
     Returns:
         설문 목록 응답
@@ -110,7 +122,7 @@ def list_surveys(
         HTTPException: 목록 조회 실패 시
     """
     try:
-        surveys = service.get_all_surveys()
+        surveys = service.get_surveys_by_user(user)
         survey_items = [
             SurveyListItem(
                 id=s.id,
@@ -168,13 +180,15 @@ def list_surveys(
 )
 def get_survey(
     survey_id: str,
-    service: SurveyService = Depends(get_survey_service)
+    service: SurveyService = Depends(get_survey_service),
+    user: User = Depends(get_anonymous_user)
 ) -> SurveyResponse:
     """설문 상세 정보를 조회합니다.
 
     Args:
         survey_id: 설문 ID
         service: 설문 서비스
+        user: 익명 사용자
 
     Returns:
         설문 상세 응답
@@ -183,7 +197,13 @@ def get_survey(
         HTTPException: 설문을 찾을 수 없거나 조회 실패 시
     """
     try:
-        survey = service.get_survey(survey_id)
+        result = service.get_survey(user, survey_id)
+        if result.is_failure():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=result.error
+            )
+        survey = result.value
         questions = [
             QuestionResponse(
                 id=q.id,
@@ -200,11 +220,8 @@ def get_survey(
             created_at=survey.created_at.isoformat(),
             questions=questions
         )
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e)
-        )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -258,7 +275,8 @@ def get_survey(
 def add_question(
     survey_id: str,
     request: AddQuestionRequest,
-    service: SurveyService = Depends(get_survey_service)
+    service: SurveyService = Depends(get_survey_service),
+    user: User = Depends(get_anonymous_user)
 ) -> AddQuestionResponse:
     """설문에 질문을 추가합니다.
 
@@ -266,6 +284,7 @@ def add_question(
         survey_id: 설문 ID
         request: 질문 추가 요청
         service: 설문 서비스
+        user: 익명 사용자
 
     Returns:
         질문 추가 응답
@@ -275,13 +294,21 @@ def add_question(
     """
     try:
         question_type = QuestionType(request.question_type)
-        question_id = service.add_question(
+        result = service.add_question(
+            user,
             survey_id,
             request.text,
             question_type,
             request.options
         )
-        return AddQuestionResponse(question_id=question_id)
+        if result.is_failure():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=result.error
+            )
+        return AddQuestionResponse(question_id=result.value)
+    except HTTPException:
+        raise
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

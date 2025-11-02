@@ -359,3 +359,150 @@ class Commands:
         except Exception:
             logger.exception("결과 조회 중 오류 발생")
             raise
+
+    def update_survey(self, user: User, survey_id: str, title: str, description: str) -> tuple[bool, str]:
+        """설문을 수정합니다.
+
+        Args:
+            user: 사용자 엔티티
+            survey_id: 설문 ID
+            title: 새 제목
+            description: 새 설명
+
+        Returns:
+            (성공 여부, 에러 메시지)
+        """
+        try:
+            result = self.survey_service.update_survey(user, survey_id, title=title, description=description)
+
+            if result.is_success():
+                logger.info("설문 수정 완료", extra={"survey_id": survey_id})
+                return True, ""
+            else:
+                logger.warning(f"설문 수정 실패: {result.error}")
+                return False, result.error
+        except Exception:
+            logger.exception("설문 수정 중 오류 발생")
+            raise
+
+    def delete_survey(self, user: User, survey_id: str) -> tuple[bool, str]:
+        """설문을 삭제합니다.
+
+        Args:
+            user: 사용자 엔티티
+            survey_id: 설문 ID
+
+        Returns:
+            (성공 여부, 에러 메시지)
+        """
+        try:
+            result = self.survey_service.delete_survey(user, survey_id)
+
+            if result.is_success():
+                logger.info("설문 삭제 완료", extra={"survey_id": survey_id})
+                return True, ""
+            else:
+                logger.warning(f"설문 삭제 실패: {result.error}")
+                return False, result.error
+        except Exception:
+            logger.exception("설문 삭제 중 오류 발생")
+            raise
+
+    def update_question(self, user: User, question_id: str, text: str, options: list[str] | None = None) -> tuple[bool, str]:
+        """질문을 수정합니다.
+
+        Args:
+            user: 사용자 엔티티
+            question_id: 질문 ID
+            text: 새 질문 내용
+            options: 새 선택지 (객관식인 경우)
+
+        Returns:
+            (성공 여부, 에러 메시지)
+        """
+        try:
+            updates = {"text": text}
+            if options is not None:
+                updates["options"] = tuple(options)
+
+            result = self.survey_service.update_question(user, question_id, **updates)
+
+            if result.is_success():
+                logger.info("질문 수정 완료", extra={"question_id": question_id})
+                return True, ""
+            else:
+                logger.warning(f"질문 수정 실패: {result.error}")
+                return False, result.error
+        except Exception:
+            logger.exception("질문 수정 중 오류 발생")
+            raise
+
+    def delete_question(self, user: User, question_id: str) -> tuple[bool, str]:
+        """질문을 삭제합니다.
+
+        Args:
+            user: 사용자 엔티티
+            question_id: 질문 ID
+
+        Returns:
+            (성공 여부, 에러 메시지)
+        """
+        try:
+            result = self.survey_service.delete_question(user, question_id)
+
+            if result.is_success():
+                logger.info("질문 삭제 완료", extra={"question_id": question_id})
+                return True, ""
+            else:
+                logger.warning(f"질문 삭제 실패: {result.error}")
+                return False, result.error
+        except Exception:
+            logger.exception("질문 삭제 중 오류 발생")
+            raise
+
+    def update_response(self, user: User, response_id: str, answer: str) -> tuple[bool, str]:
+        """응답을 수정합니다.
+
+        Args:
+            user: 사용자 엔티티
+            response_id: 응답 ID
+            answer: 새 답변
+
+        Returns:
+            (성공 여부, 에러 메시지)
+        """
+        try:
+            result = self.response_service.update_response(user, response_id, answer)
+
+            if result.is_success():
+                logger.info("응답 수정 완료", extra={"response_id": response_id})
+                return True, ""
+            else:
+                logger.warning(f"응답 수정 실패: {result.error}")
+                return False, result.error
+        except Exception:
+            logger.exception("응답 수정 중 오류 발생")
+            raise
+
+    def delete_response(self, user: User, response_id: str) -> tuple[bool, str]:
+        """응답을 삭제합니다.
+
+        Args:
+            user: 사용자 엔티티
+            response_id: 응답 ID
+
+        Returns:
+            (성공 여부, 에러 메시지)
+        """
+        try:
+            result = self.response_service.delete_response(user, response_id)
+
+            if result.is_success():
+                logger.info("응답 삭제 완료", extra={"response_id": response_id})
+                return True, ""
+            else:
+                logger.warning(f"응답 삭제 실패: {result.error}")
+                return False, result.error
+        except Exception:
+            logger.exception("응답 삭제 중 오류 발생")
+            raise

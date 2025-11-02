@@ -7,7 +7,11 @@
       "Bash(uv add:*)",
       "Bash(curl:*)",
       "Bash(nul)",
-      "Bash(echo:*)"
+      "Bash(echo:*)",
+      "Bash(cat:*)",
+      "WebSearch",
+      "Bash(findstr:*)",
+      "Bash(dir:*)"
     ],
     "deny": [],
     "ask": []
