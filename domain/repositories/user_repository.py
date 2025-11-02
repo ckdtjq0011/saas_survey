@@ -50,3 +50,28 @@ class UserRepository(ABC):
             사용자 엔티티 목록
         """
         pass
+
+    @abstractmethod
+    def update_user(self, user_id: str, **updates) -> None:
+        """사용자 정보를 수정합니다.
+
+        Args:
+            user_id: 사용자 식별자
+            **updates: 수정할 필드 (email, password_hash, role, is_active 등)
+
+        Raises:
+            ValueError: 사용자를 찾을 수 없는 경우
+        """
+        pass
+
+    @abstractmethod
+    def delete_user(self, user_id: str) -> None:
+        """사용자를 삭제합니다.
+
+        Args:
+            user_id: 사용자 식별자
+
+        Raises:
+            ValueError: 사용자를 찾을 수 없는 경우
+        """
+        pass

@@ -34,3 +34,28 @@ class TenantRepository(ABC):
             테넌트 엔티티 목록
         """
         pass
+
+    @abstractmethod
+    def update_tenant(self, tenant_id: str, **updates) -> None:
+        """테넌트 정보를 수정합니다.
+
+        Args:
+            tenant_id: 테넌트 식별자
+            **updates: 수정할 필드 (name, is_active 등)
+
+        Raises:
+            ValueError: 테넌트를 찾을 수 없는 경우
+        """
+        pass
+
+    @abstractmethod
+    def delete_tenant(self, tenant_id: str) -> None:
+        """테넌트를 삭제합니다.
+
+        Args:
+            tenant_id: 테넌트 식별자
+
+        Raises:
+            ValueError: 테넌트를 찾을 수 없는 경우
+        """
+        pass

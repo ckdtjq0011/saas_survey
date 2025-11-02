@@ -79,3 +79,120 @@ class CsvResponseRepository(ResponseRepository):
                 if row["question_id"] == question_id:
                     responses.append(Response.from_dict(row))
         return responses
+
+    def find_by_respondent_id(self, respondent_id: str) -> list[Response]:
+        """응답자 ID로 응답 목록을 조회합니다.
+
+        Args:
+            respondent_id: 응답자 식별자
+
+        Returns:
+            응답 엔티티 목록
+        """
+        respondent_id = respondent_id.strip()
+        responses = []
+
+        with open(self.responses_file, "r", encoding="utf-8-sig") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                if not row or not row.get("id"):
+                    continue
+
+                if row["respondent_id"].strip() == respondent_id:
+                    responses.append(Response.from_dict(row))
+
+        return responses
+
+    def update_response(self, response_id: str, answer: str) -> None:
+        """응답을 수정합니다.
+
+        Args:
+            response_id: 응답 식별자
+            answer: 새로운 답변
+
+        Raises:
+            ValueError: 응답을 찾을 수 없는 경우
+        """
+        response_id = response_id.strip()
+        rows = []
+        found = False
+
+        with open(self.responses_file, "r", encoding="utf-8-sig") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                if not row or not row.get("id"):
+                    continue
+
+                if row["id"].strip() == response_id:
+                    found = True
+                    row["answer"] = answer
+                rows.append(row)
+
+        if not found:
+            raise ValueError(f"응답을 찾을 수 없습니다: {response_id}")
+
+        with open(self.responses_file, "w", newline="", encoding="utf-8-sig") as f:
+            fieldnames = ["id", "survey_id", "question_id", "answer", "respondent_id", "created_at"]
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(rows)
+            f.flush()
+
+    def delete_response(self, response_id: str) -> None:
+        """응답을 삭제합니다.
+
+        Args:
+            response_id: 응답 식별자
+
+        Raises:
+            ValueError: 응답을 찾을 수 없는 경우
+        """
+        response_id = response_id.strip()
+        rows = []
+        found = False
+
+        with open(self.responses_file, "r", encoding="utf-8-sig") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                if not row or not row.get("id"):
+                    continue
+
+                if row["id"].strip() == response_id:
+                    found = True
+                    continue
+                rows.append(row)
+
+        if not found:
+            raise ValueError(f"응답을 찾을 수 없습니다: {response_id}")
+
+        with open(self.responses_file, "w", newline="", encoding="utf-8-sig") as f:
+            fieldnames = ["id", "survey_id", "question_id", "answer", "respondent_id", "created_at"]
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(rows)
+            f.flush()
+
+    def delete_by_survey_id(self, survey_id: str) -> None:
+        """설문의 모든 응답을 삭제합니다.
+
+        Args:
+            survey_id: 설문 식별자
+        """
+        survey_id = survey_id.strip()
+        rows = []
+
+        with open(self.responses_file, "r", encoding="utf-8-sig") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                if not row or not row.get("id"):
+                    continue
+
+                if row["survey_id"].strip() != survey_id:
+                    rows.append(row)
+
+        with open(self.responses_file, "w", newline="", encoding="utf-8-sig") as f:
+            fieldnames = ["id", "survey_id", "question_id", "answer", "respondent_id", "created_at"]
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(rows)
+            f.flush()

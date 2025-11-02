@@ -117,3 +117,122 @@ class SurveyService:
         """
         all_surveys = self.survey_repository.find_all_surveys()
         return [s for s in all_surveys if s.tenant_id == user.tenant_id]
+
+    def update_survey(self, user: User, survey_id: str, **updates) -> Result[None, str]:
+        """설문 정보를 수정합니다.
+
+        Args:
+            user: 사용자 엔티티
+            survey_id: 설문 식별자
+            **updates: 수정할 필드 (title, description)
+
+        Returns:
+            Success[None] 또는 Failure[에러 메시지]
+        """
+        survey = self.survey_repository.find_survey_by_id(survey_id)
+        if not survey:
+            return Failure(f"설문을 찾을 수 없습니다: {survey_id}")
+
+        if survey.tenant_id != user.tenant_id:
+            return Failure("다른 테넌트의 설문에 접근할 수 없습니다")
+
+        is_owner = survey.owner_id == user.id
+        if not user.role.can_manage_survey(is_owner):
+            return Failure("설문 관리 권한이 없습니다")
+
+        self.survey_repository.update_survey(survey_id, **updates)
+        return Success(None)
+
+    def update_question(self, user: User, question_id: str, **updates) -> Result[None, str]:
+        """질문 정보를 수정합니다.
+
+        Args:
+            user: 사용자 엔티티
+            question_id: 질문 식별자
+            **updates: 수정할 필드 (text, options)
+
+        Returns:
+            Success[None] 또는 Failure[에러 메시지]
+
+        Raises:
+            ValueError: 질문을 찾을 수 없는 경우
+        """
+        all_surveys = self.survey_repository.find_all_surveys()
+        target_survey = None
+        for survey in all_surveys:
+            for question in survey.questions:
+                if question.id == question_id:
+                    target_survey = survey
+                    break
+            if target_survey:
+                break
+
+        if not target_survey:
+            return Failure(f"질문을 찾을 수 없습니다: {question_id}")
+
+        if target_survey.tenant_id != user.tenant_id:
+            return Failure("다른 테넌트의 질문에 접근할 수 없습니다")
+
+        is_owner = target_survey.owner_id == user.id
+        if not user.role.can_manage_survey(is_owner):
+            return Failure("질문 관리 권한이 없습니다")
+
+        self.survey_repository.update_question(question_id, **updates)
+        return Success(None)
+
+    def delete_survey(self, user: User, survey_id: str) -> Result[None, str]:
+        """설문을 삭제합니다.
+
+        Args:
+            user: 사용자 엔티티
+            survey_id: 설문 식별자
+
+        Returns:
+            Success[None] 또는 Failure[에러 메시지]
+        """
+        survey = self.survey_repository.find_survey_by_id(survey_id)
+        if not survey:
+            return Failure(f"설문을 찾을 수 없습니다: {survey_id}")
+
+        if survey.tenant_id != user.tenant_id:
+            return Failure("다른 테넌트의 설문에 접근할 수 없습니다")
+
+        is_owner = survey.owner_id == user.id
+        if not user.role.can_manage_survey(is_owner):
+            return Failure("설문 삭제 권한이 없습니다")
+
+        self.survey_repository.delete_survey(survey_id)
+        return Success(None)
+
+    def delete_question(self, user: User, question_id: str) -> Result[None, str]:
+        """질문을 삭제합니다.
+
+        Args:
+            user: 사용자 엔티티
+            question_id: 질문 식별자
+
+        Returns:
+            Success[None] 또는 Failure[에러 메시지]
+        """
+        all_surveys = self.survey_repository.find_all_surveys()
+        target_survey = None
+        for survey in all_surveys:
+            for question in survey.questions:
+                if question.id == question_id:
+                    target_survey = survey
+                    break
+            if target_survey:
+                break
+
+        if not target_survey:
+            return Failure(f"질문을 찾을 수 없습니다: {question_id}")
+
+        if target_survey.tenant_id != user.tenant_id:
+            return Failure("다른 테넌트의 질문에 접근할 수 없습니다")
+
+        is_owner = target_survey.owner_id == user.id
+        if not user.role.can_manage_survey(is_owner):
+            return Failure("질문 삭제 권한이 없습니다")
+
+        self.survey_repository.delete_question(question_id)
+        return Success(None)

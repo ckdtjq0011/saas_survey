@@ -125,3 +125,78 @@ class CsvUserRepository(UserRepository):
                     users.append(User.from_dict(row))
 
         return users
+
+    def update_user(self, user_id: str, **updates) -> None:
+        """사용자 정보를 수정합니다.
+
+        Args:
+            user_id: 사용자 식별자
+            **updates: 수정할 필드
+
+        Raises:
+            ValueError: 사용자를 찾을 수 없는 경우
+        """
+        user_id = user_id.strip()
+        rows = []
+        found = False
+
+        with open(self.users_file, "r", encoding="utf-8-sig") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                if not row or not row.get("id"):
+                    continue
+
+                if row["id"].strip() == user_id:
+                    found = True
+                    for key, value in updates.items():
+                        if key in row:
+                            row[key] = str(value)
+                rows.append(row)
+
+        if not found:
+            raise ValueError(f"사용자를 찾을 수 없습니다: {user_id}")
+
+        with open(self.users_file, "w", newline="", encoding="utf-8-sig") as f:
+            fieldnames = ["id", "tenant_id", "username", "email", "password_hash", "role", "created_at", "is_active"]
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(rows)
+            f.flush()
+
+        logger.info("사용자 정보를 수정했습니다", extra={"user_id": user_id, "updates": updates})
+
+    def delete_user(self, user_id: str) -> None:
+        """사용자를 삭제합니다.
+
+        Args:
+            user_id: 사용자 식별자
+
+        Raises:
+            ValueError: 사용자를 찾을 수 없는 경우
+        """
+        user_id = user_id.strip()
+        rows = []
+        found = False
+
+        with open(self.users_file, "r", encoding="utf-8-sig") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                if not row or not row.get("id"):
+                    continue
+
+                if row["id"].strip() == user_id:
+                    found = True
+                    continue
+                rows.append(row)
+
+        if not found:
+            raise ValueError(f"사용자를 찾을 수 없습니다: {user_id}")
+
+        with open(self.users_file, "w", newline="", encoding="utf-8-sig") as f:
+            fieldnames = ["id", "tenant_id", "username", "email", "password_hash", "role", "created_at", "is_active"]
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(rows)
+            f.flush()
+
+        logger.info("사용자를 삭제했습니다", extra={"user_id": user_id})

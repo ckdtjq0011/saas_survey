@@ -120,3 +120,217 @@ class CsvSurveyRepository(SurveyRepository):
                 if row["survey_id"] == survey_id:
                     questions.append(Question.from_dict(row))
         return questions
+
+    def find_by_owner_id(self, owner_id: str) -> list[Survey]:
+        """소유자 ID로 설문 목록을 조회합니다.
+
+        Args:
+            owner_id: 소유자 식별자
+
+        Returns:
+            설문 엔티티 목록
+        """
+        owner_id = owner_id.strip()
+        surveys = []
+
+        with open(self.surveys_file, "r", encoding="utf-8-sig") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                if not row or not row.get("id"):
+                    continue
+
+                if row["owner_id"].strip() == owner_id:
+                    questions = self.find_questions_by_survey_id(row["id"])
+                    surveys.append(Survey.from_dict(row, tuple(questions)))
+
+        return surveys
+
+    def find_by_tenant_id(self, tenant_id: str) -> list[Survey]:
+        """테넌트 ID로 설문 목록을 조회합니다.
+
+        Args:
+            tenant_id: 테넌트 식별자
+
+        Returns:
+            설문 엔티티 목록
+        """
+        tenant_id = tenant_id.strip()
+        surveys = []
+
+        with open(self.surveys_file, "r", encoding="utf-8-sig") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                if not row or not row.get("id"):
+                    continue
+
+                if row["tenant_id"].strip() == tenant_id:
+                    questions = self.find_questions_by_survey_id(row["id"])
+                    surveys.append(Survey.from_dict(row, tuple(questions)))
+
+        return surveys
+
+    def update_survey(self, survey_id: str, **updates) -> None:
+        """설문 정보를 수정합니다.
+
+        Args:
+            survey_id: 설문 식별자
+            **updates: 수정할 필드
+
+        Raises:
+            ValueError: 설문을 찾을 수 없는 경우
+        """
+        survey_id = survey_id.strip()
+        rows = []
+        found = False
+
+        with open(self.surveys_file, "r", encoding="utf-8-sig") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                if not row or not row.get("id"):
+                    continue
+
+                if row["id"].strip() == survey_id:
+                    found = True
+                    for key, value in updates.items():
+                        if key in row:
+                            row[key] = str(value)
+                rows.append(row)
+
+        if not found:
+            raise ValueError(f"설문을 찾을 수 없습니다: {survey_id}")
+
+        with open(self.surveys_file, "w", newline="", encoding="utf-8-sig") as f:
+            fieldnames = ["id", "tenant_id", "owner_id", "title", "description", "created_at"]
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(rows)
+            f.flush()
+
+        logger.info("설문 정보를 수정했습니다", extra={"survey_id": survey_id, "updates": updates})
+
+    def update_question(self, question_id: str, **updates) -> None:
+        """질문 정보를 수정합니다.
+
+        Args:
+            question_id: 질문 식별자
+            **updates: 수정할 필드
+
+        Raises:
+            ValueError: 질문을 찾을 수 없는 경우
+        """
+        question_id = question_id.strip()
+        rows = []
+        found = False
+
+        with open(self.questions_file, "r", encoding="utf-8-sig") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                if not row or not row.get("id"):
+                    continue
+
+                if row["id"].strip() == question_id:
+                    found = True
+                    for key, value in updates.items():
+                        if key in row:
+                            row[key] = str(value)
+                rows.append(row)
+
+        if not found:
+            raise ValueError(f"질문을 찾을 수 없습니다: {question_id}")
+
+        with open(self.questions_file, "w", newline="", encoding="utf-8-sig") as f:
+            fieldnames = ["id", "survey_id", "text", "question_type", "options"]
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(rows)
+            f.flush()
+
+        logger.info("질문 정보를 수정했습니다", extra={"question_id": question_id, "updates": updates})
+
+    def delete_survey(self, survey_id: str) -> None:
+        """설문을 삭제합니다.
+
+        Args:
+            survey_id: 설문 식별자
+
+        Raises:
+            ValueError: 설문을 찾을 수 없는 경우
+        """
+        survey_id = survey_id.strip()
+        rows = []
+        found = False
+
+        with open(self.surveys_file, "r", encoding="utf-8-sig") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                if not row or not row.get("id"):
+                    continue
+
+                if row["id"].strip() == survey_id:
+                    found = True
+                    continue
+                rows.append(row)
+
+        if not found:
+            raise ValueError(f"설문을 찾을 수 없습니다: {survey_id}")
+
+        with open(self.surveys_file, "w", newline="", encoding="utf-8-sig") as f:
+            fieldnames = ["id", "tenant_id", "owner_id", "title", "description", "created_at"]
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(rows)
+            f.flush()
+
+        question_rows = []
+        with open(self.questions_file, "r", encoding="utf-8-sig") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                if not row or not row.get("id"):
+                    continue
+                if row["survey_id"].strip() != survey_id:
+                    question_rows.append(row)
+
+        with open(self.questions_file, "w", newline="", encoding="utf-8-sig") as f:
+            fieldnames = ["id", "survey_id", "text", "question_type", "options"]
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(question_rows)
+            f.flush()
+
+        logger.info("설문 및 관련 질문을 삭제했습니다", extra={"survey_id": survey_id})
+
+    def delete_question(self, question_id: str) -> None:
+        """질문을 삭제합니다.
+
+        Args:
+            question_id: 질문 식별자
+
+        Raises:
+            ValueError: 질문을 찾을 수 없는 경우
+        """
+        question_id = question_id.strip()
+        rows = []
+        found = False
+
+        with open(self.questions_file, "r", encoding="utf-8-sig") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                if not row or not row.get("id"):
+                    continue
+
+                if row["id"].strip() == question_id:
+                    found = True
+                    continue
+                rows.append(row)
+
+        if not found:
+            raise ValueError(f"질문을 찾을 수 없습니다: {question_id}")
+
+        with open(self.questions_file, "w", newline="", encoding="utf-8-sig") as f:
+            fieldnames = ["id", "survey_id", "text", "question_type", "options"]
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(rows)
+            f.flush()
+
+        logger.info("질문을 삭제했습니다", extra={"question_id": question_id})

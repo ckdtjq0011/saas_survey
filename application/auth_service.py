@@ -244,3 +244,104 @@ class AuthService:
             랜덤 API 키 (hex 문자열)
         """
         return secrets.token_hex(self.API_KEY_LENGTH)
+
+    def update_user(self, admin_user: User, user_id: str, **updates) -> Result[None, str]:
+        """사용자 정보를 수정합니다.
+
+        Args:
+            admin_user: 관리자 사용자 엔티티
+            user_id: 수정할 사용자 식별자
+            **updates: 수정할 필드 (email, password, role, is_active)
+
+        Returns:
+            Success[None] 또는 Failure[에러 메시지]
+        """
+        if not admin_user.role.can_manage_users():
+            return Failure("사용자 관리 권한이 없습니다")
+
+        target_user = self.user_repository.find_user_by_id(user_id)
+        if not target_user:
+            return Failure(f"사용자를 찾을 수 없습니다: {user_id}")
+
+        if target_user.tenant_id != admin_user.tenant_id:
+            return Failure("다른 테넌트의 사용자를 수정할 수 없습니다")
+
+        if "password" in updates:
+            updates["password_hash"] = self._hash_password(updates.pop("password"))
+
+        self.user_repository.update_user(user_id, **updates)
+        return Success(None)
+
+    def delete_user(self, admin_user: User, user_id: str) -> Result[None, str]:
+        """사용자를 삭제합니다.
+
+        Args:
+            admin_user: 관리자 사용자 엔티티
+            user_id: 삭제할 사용자 식별자
+
+        Returns:
+            Success[None] 또는 Failure[에러 메시지]
+        """
+        if not admin_user.role.can_manage_users():
+            return Failure("사용자 관리 권한이 없습니다")
+
+        target_user = self.user_repository.find_user_by_id(user_id)
+        if not target_user:
+            return Failure(f"사용자를 찾을 수 없습니다: {user_id}")
+
+        if target_user.tenant_id != admin_user.tenant_id:
+            return Failure("다른 테넌트의 사용자를 삭제할 수 없습니다")
+
+        session = self.session_repository.find_session_by_user_id(user_id)
+        if session:
+            self.session_repository.delete_session(session.id)
+
+        self.user_repository.delete_user(user_id)
+        return Success(None)
+
+    def update_tenant(self, admin_user: User, tenant_id: str, **updates) -> Result[None, str]:
+        """테넌트 정보를 수정합니다.
+
+        Args:
+            admin_user: 관리자 사용자 엔티티
+            tenant_id: 테넌트 식별자
+            **updates: 수정할 필드 (name, is_active)
+
+        Returns:
+            Success[None] 또는 Failure[에러 메시지]
+        """
+        if not admin_user.role.can_manage_users():
+            return Failure("테넌트 관리 권한이 없습니다")
+
+        if admin_user.tenant_id != tenant_id:
+            return Failure("다른 테넌트를 수정할 수 없습니다")
+
+        tenant = self.tenant_repository.find_tenant_by_id(tenant_id)
+        if not tenant:
+            return Failure(f"테넌트를 찾을 수 없습니다: {tenant_id}")
+
+        self.tenant_repository.update_tenant(tenant_id, **updates)
+        return Success(None)
+
+    def deactivate_tenant(self, admin_user: User, tenant_id: str) -> Result[None, str]:
+        """테넌트를 비활성화합니다.
+
+        Args:
+            admin_user: 관리자 사용자 엔티티
+            tenant_id: 테넌트 식별자
+
+        Returns:
+            Success[None] 또는 Failure[에러 메시지]
+        """
+        if not admin_user.role.can_manage_users():
+            return Failure("테넌트 관리 권한이 없습니다")
+
+        if admin_user.tenant_id != tenant_id:
+            return Failure("다른 테넌트를 비활성화할 수 없습니다")
+
+        tenant = self.tenant_repository.find_tenant_by_id(tenant_id)
+        if not tenant:
+            return Failure(f"테넌트를 찾을 수 없습니다: {tenant_id}")
+
+        self.tenant_repository.update_tenant(tenant_id, is_active=False)
+        return Success(None)

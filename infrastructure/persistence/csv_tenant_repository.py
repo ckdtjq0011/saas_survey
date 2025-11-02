@@ -84,3 +84,78 @@ class CsvTenantRepository(TenantRepository):
                     continue
                 tenants.append(Tenant.from_dict(row))
         return tenants
+
+    def update_tenant(self, tenant_id: str, **updates) -> None:
+        """테넌트 정보를 수정합니다.
+
+        Args:
+            tenant_id: 테넌트 식별자
+            **updates: 수정할 필드
+
+        Raises:
+            ValueError: 테넌트를 찾을 수 없는 경우
+        """
+        tenant_id = tenant_id.strip()
+        rows = []
+        found = False
+
+        with open(self.tenants_file, "r", encoding="utf-8-sig") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                if not row or not row.get("id"):
+                    continue
+
+                if row["id"].strip() == tenant_id:
+                    found = True
+                    for key, value in updates.items():
+                        if key in row:
+                            row[key] = str(value)
+                rows.append(row)
+
+        if not found:
+            raise ValueError(f"테넌트를 찾을 수 없습니다: {tenant_id}")
+
+        with open(self.tenants_file, "w", newline="", encoding="utf-8-sig") as f:
+            fieldnames = ["id", "name", "created_at", "is_active"]
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(rows)
+            f.flush()
+
+        logger.info("테넌트 정보를 수정했습니다", extra={"tenant_id": tenant_id, "updates": updates})
+
+    def delete_tenant(self, tenant_id: str) -> None:
+        """테넌트를 삭제합니다.
+
+        Args:
+            tenant_id: 테넌트 식별자
+
+        Raises:
+            ValueError: 테넌트를 찾을 수 없는 경우
+        """
+        tenant_id = tenant_id.strip()
+        rows = []
+        found = False
+
+        with open(self.tenants_file, "r", encoding="utf-8-sig") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                if not row or not row.get("id"):
+                    continue
+
+                if row["id"].strip() == tenant_id:
+                    found = True
+                    continue
+                rows.append(row)
+
+        if not found:
+            raise ValueError(f"테넌트를 찾을 수 없습니다: {tenant_id}")
+
+        with open(self.tenants_file, "w", newline="", encoding="utf-8-sig") as f:
+            fieldnames = ["id", "name", "created_at", "is_active"]
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(rows)
+            f.flush()
+
+        logger.info("테넌트를 삭제했습니다", extra={"tenant_id": tenant_id})

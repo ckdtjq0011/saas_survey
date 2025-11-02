@@ -56,3 +56,77 @@ class SurveyRepository(ABC):
             질문 엔티티 목록
         """
         pass
+
+    @abstractmethod
+    def find_by_owner_id(self, owner_id: str) -> list[Survey]:
+        """소유자 ID로 설문 목록을 조회합니다.
+
+        Args:
+            owner_id: 소유자 식별자
+
+        Returns:
+            설문 엔티티 목록
+        """
+        pass
+
+    @abstractmethod
+    def find_by_tenant_id(self, tenant_id: str) -> list[Survey]:
+        """테넌트 ID로 설문 목록을 조회합니다.
+
+        Args:
+            tenant_id: 테넌트 식별자
+
+        Returns:
+            설문 엔티티 목록
+        """
+        pass
+
+    @abstractmethod
+    def update_survey(self, survey_id: str, **updates) -> None:
+        """설문 정보를 수정합니다.
+
+        Args:
+            survey_id: 설문 식별자
+            **updates: 수정할 필드 (title, description 등)
+
+        Raises:
+            ValueError: 설문을 찾을 수 없는 경우
+        """
+        pass
+
+    @abstractmethod
+    def update_question(self, question_id: str, **updates) -> None:
+        """질문 정보를 수정합니다.
+
+        Args:
+            question_id: 질문 식별자
+            **updates: 수정할 필드 (text, options 등)
+
+        Raises:
+            ValueError: 질문을 찾을 수 없는 경우
+        """
+        pass
+
+    @abstractmethod
+    def delete_survey(self, survey_id: str) -> None:
+        """설문을 삭제합니다.
+
+        Args:
+            survey_id: 설문 식별자
+
+        Raises:
+            ValueError: 설문을 찾을 수 없는 경우
+        """
+        pass
+
+    @abstractmethod
+    def delete_question(self, question_id: str) -> None:
+        """질문을 삭제합니다.
+
+        Args:
+            question_id: 질문 식별자
+
+        Raises:
+            ValueError: 질문을 찾을 수 없는 경우
+        """
+        pass
