@@ -1,4 +1,5 @@
 from domain.entities.user import User
+from domain.value_objects.types import QuestionType
 from interface.cli.handlers.base_handler import BaseHandler
 from interface.cli.validators import validate_rating_answer
 
@@ -124,11 +125,11 @@ class ResponseHandler(BaseHandler):
 
             self.ui.print_info(f"\n[Q{idx}] {q_text}")
 
-            if q_type == "TEXT":
+            if q_type == QuestionType.TEXT.value:
                 answer = self.ui.get_input("답변")
                 answers[q_id] = answer
 
-            elif q_type == "MULTIPLE_CHOICE":
+            elif q_type == QuestionType.MULTIPLE_CHOICE.value:
                 if q_options:
                     for opt_idx, opt in enumerate(q_options, 1):
                         self.ui.print_info(f"  {opt_idx}. {opt}")
@@ -139,7 +140,7 @@ class ResponseHandler(BaseHandler):
                         self.ui.print_warning("잘못된 선택입니다")
                         return None
 
-            elif q_type == "RATING":
+            elif q_type == QuestionType.RATING.value:
                 self.ui.print_info("  평점: 1-5")
                 answer = self.ui.get_validated_input("평점", validate_rating_answer)
                 answers[q_id] = answer

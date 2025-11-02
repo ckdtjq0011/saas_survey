@@ -54,11 +54,11 @@ class SurveyHandler(BaseHandler):
 
             question_type = self.ui.get_choice(
                 "질문 유형",
-                choices=["TEXT", "MULTIPLE_CHOICE", "RATING"],
+                choices=QuestionType.get_choices_for_ui(),
             )
 
             options = None
-            if question_type == "MULTIPLE_CHOICE":
+            if question_type == QuestionType.MULTIPLE_CHOICE.value:
                 options = self._get_multiple_choice_options()
 
             success, result = self.commands.add_question(

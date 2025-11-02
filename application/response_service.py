@@ -4,6 +4,7 @@ from collections import Counter
 from domain.entities.response import Response
 from domain.entities.user import User
 from domain.value_objects.result import Success, Failure, Result
+from domain.value_objects.types import QuestionType
 from domain.repositories.response_repository import ResponseRepository
 from domain.repositories.survey_repository import SurveyRepository
 
@@ -123,16 +124,18 @@ class ResponseService:
             responses = self.response_repository.find_by_question_id(question.id)
             answers = [r.answer for r in responses]
 
-            if question.question_type.value == "rating":
+            if question.question_type == QuestionType.RATING:
                 ratings = [int(a) for a in answers if a.isdigit()]
                 avg_rating = sum(ratings) / len(ratings) if ratings else 0.0
+                counter = Counter([str(r) for r in ratings])
                 results[question.id] = {
                     "question": question.text,
                     "type": question.question_type.value,
                     "count": len(ratings),
                     "average": round(avg_rating, 2),
+                    "distribution": dict(counter),
                 }
-            elif question.question_type.value == "choice":
+            elif question.question_type == QuestionType.MULTIPLE_CHOICE:
                 counter = Counter(answers)
                 results[question.id] = {
                     "question": question.text,

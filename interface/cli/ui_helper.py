@@ -8,9 +8,10 @@ from rich.tree import Tree
 from rich.prompt import Prompt, IntPrompt, Confirm
 from rich.text import Text
 from rich import box
+from domain.value_objects.types import QuestionType
 
 
-DEFAULT_WIDTH = 80
+DEFAULT_WIDTH = 120
 PANEL_WIDTH = 70
 
 
@@ -107,8 +108,8 @@ class ConsoleUI:
         )
 
         table.add_column("번호", justify="center", style="cyan", width=6)
-        table.add_column("기능", style="green", width=20)
-        table.add_column("설명", style="white", width=40)
+        table.add_column("기능", style="green", no_wrap=False)
+        table.add_column("설명", style="white", no_wrap=False)
 
         for number, name, description in items:
             table.add_row(number, name, description)
@@ -160,7 +161,7 @@ class ConsoleUI:
         )
 
         table.add_column("번호", justify="center", style="cyan", width=6)
-        table.add_column("제목", style="green", width=25)
+        table.add_column("제목", style="green", no_wrap=False)
         table.add_column("소유자", style="yellow", width=15)
         table.add_column("질문 수", justify="center", style="magenta", width=8)
         table.add_column("생성일", style="white", width=18)
@@ -198,11 +199,11 @@ class ConsoleUI:
 
             question_node = tree.add(f"[green]Q{idx}.[/green] {q_text} [yellow]({q_type})[/yellow]")
 
-            if q_type == "MULTIPLE_CHOICE" and question.get("options"):
+            if q_type == QuestionType.MULTIPLE_CHOICE.value and question.get("options"):
                 options_node = question_node.add("[magenta]선택지:[/magenta]")
                 for opt in question.get("options", []):
                     options_node.add(f"• {opt}")
-            elif q_type == "RATING":
+            elif q_type == QuestionType.RATING.value:
                 question_node.add("[magenta]평점: 1-5[/magenta]")
 
         self.console.print(tree)
@@ -230,7 +231,7 @@ class ConsoleUI:
                 header_style="bold magenta"
             )
 
-            table.add_column("답변", style="green", width=30)
+            table.add_column("답변", style="green", no_wrap=False)
             table.add_column("응답 수", justify="right", style="cyan", width=10)
             table.add_column("비율", justify="right", style="yellow", width=10)
 
@@ -265,7 +266,7 @@ class ConsoleUI:
 
         table.add_column("번호", justify="center", style="cyan", width=6)
         table.add_column("ID", style="yellow", width=36)
-        table.add_column("이름", style="green", width=20)
+        table.add_column("이름", style="green", no_wrap=False)
         table.add_column("생성일", style="white", width=18)
         table.add_column("상태", justify="center", style="magenta", width=8)
 

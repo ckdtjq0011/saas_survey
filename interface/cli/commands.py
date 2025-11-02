@@ -221,7 +221,7 @@ class Commands:
             (성공 여부, 질문 ID 또는 에러 메시지)
         """
         try:
-            q_type = QuestionType(question_type)
+            q_type = QuestionType.from_value(question_type)
             result = self.survey_service.add_question(user, survey_id, text, q_type, options)
 
             if result.is_success():
@@ -324,7 +324,7 @@ class Commands:
             logger.exception("응답 제출 중 오류 발생")
             raise
 
-    def get_results(self, user: User, survey_id: str) -> tuple[bool, str, dict[str, dict[str, int | float | list[str]]] | None]:
+    def get_results(self, user: User, survey_id: str) -> tuple[bool, str, dict[str, list[dict[str, str | int | dict]]] | None]:
         """설문 결과를 조회합니다.
 
         Args:
@@ -341,7 +341,21 @@ class Commands:
                 logger.warning(f"결과 조회 실패: {result.error}")
                 return False, result.error, None
 
-            return True, "", result.value
+            raw_results = result.value
+            formatted_results = []
+            for question_id, data in raw_results.items():
+                result_item = {
+                    "question": data["question"],
+                    "answer_distribution": data.get("distribution", {}),
+                }
+                if data["type"] == QuestionType.TEXT.value:
+                    result_item["answer_distribution"] = {
+                        answer: 1 for answer in data.get("answers", [])
+                    }
+
+                formatted_results.append(result_item)
+
+            return True, "", {"results": formatted_results}
         except Exception:
             logger.exception("결과 조회 중 오류 발생")
             raise
