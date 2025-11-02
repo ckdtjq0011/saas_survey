@@ -1,5 +1,6 @@
 """사용자 엔티티입니다."""
 
+import re
 from dataclasses import dataclass
 from datetime import datetime
 from domain.value_objects.role import Role
@@ -42,10 +43,36 @@ class User:
             raise ValueError("사용자명은 필수입니다")
         if len(self.username) < 3:
             raise ValueError("사용자명은 최소 3자 이상이어야 합니다")
-        if not self.email or "@" not in self.email:
-            raise ValueError("유효한 이메일 주소가 필요합니다")
+        # VULN-008: 사용자명에 공백이 포함되지 않도록 검증
+        if any(c.isspace() for c in self.username):
+            raise ValueError("사용자명에 공백이 포함될 수 없습니다")
+        # VULN-007: 강화된 이메일 형식 검증
+        if not self.email or not self._is_valid_email(self.email):
+            raise ValueError("유효한 이메일 형식이 아닙니다")
         if not self.password_hash:
             raise ValueError("비밀번호 해시는 필수입니다")
+
+    @staticmethod
+    def _is_valid_email(email: str) -> bool:
+        """이메일 형식이 유효한지 검증합니다.
+
+        Args:
+            email: 검증할 이메일 주소
+
+        Returns:
+            이메일 형식이 유효하면 True
+        """
+        # RFC 5322 기반 간소화된 이메일 정규식
+        email_pattern = r"^[a-zA-Z0-9][a-zA-Z0-9._%+-]*@[a-zA-Z0-9][a-zA-Z0-9.-]*\.[a-zA-Z]{2,}$"
+        if not re.match(email_pattern, email):
+            return False
+        # 추가 검증: 점으로 시작하거나 끝나는 경우
+        local_part, domain = email.rsplit("@", 1)
+        if local_part.startswith(".") or local_part.endswith("."):
+            return False
+        if ".." in email:
+            return False
+        return True
 
     def to_dict(self) -> dict[str, str]:
         """엔티티를 딕셔너리로 변환합니다.

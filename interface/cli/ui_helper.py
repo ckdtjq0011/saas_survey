@@ -375,6 +375,40 @@ class ConsoleUI:
         """콘솔을 클리어합니다."""
         self.console.clear()
 
+    def get_validated_input(
+        self,
+        prompt: str,
+        validator: Any,
+        max_attempts: int = 3
+    ) -> str:
+        """검증된 입력을 받습니다.
+
+        Args:
+            prompt: 입력 프롬프트
+            validator: 검증 함수 (value -> (is_valid, error_msg))
+            max_attempts: 최대 시도 횟수
+
+        Returns:
+            검증된 입력 문자열
+
+        Raises:
+            ValueError: 최대 시도 횟수 초과 시
+        """
+        for attempt in range(max_attempts):
+            value = self.get_input(prompt)
+
+            is_valid, error = validator(value)
+
+            if is_valid:
+                return value
+
+            self.print_error(error)
+
+            if attempt < max_attempts - 1:
+                self.print_warning(f"다시 시도해주세요 ({max_attempts - attempt - 1}회 남음)")
+
+        raise ValueError(f"{max_attempts}회 시도 실패")
+
 
 _default_ui: Optional[ConsoleUI] = None
 

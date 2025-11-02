@@ -41,12 +41,14 @@ class Question:
         Returns:
             엔티티 정보를 담은 딕셔너리
         """
+        # 파이프 문자를 옵션에 사용할 수 있도록 Unit Separator(ASCII 31)로 구분
+        OPTIONS_DELIMITER = "\x1f"
         return {
             "id": self.id,
             "survey_id": self.survey_id,
             "text": self.text,
             "question_type": self.question_type.value,
-            "options": "|".join(self.options) if self.options else "",
+            "options": OPTIONS_DELIMITER.join(self.options) if self.options else "",
         }
 
     @classmethod
@@ -59,8 +61,20 @@ class Question:
         Returns:
             Question 엔티티 인스턴스
         """
+        OPTIONS_DELIMITER = "\x1f"
         options_str = data.get("options", "")
-        options = tuple(options_str.split("|")) if options_str else None
+
+        # Backward compatibility: 기존 파이프 구분자도 지원
+        if options_str:
+            if OPTIONS_DELIMITER in options_str:
+                options = tuple(options_str.split(OPTIONS_DELIMITER))
+            elif "|" in options_str:
+                # 기존 데이터 호환성
+                options = tuple(options_str.split("|"))
+            else:
+                options = (options_str,) if options_str else None
+        else:
+            options = None
 
         return cls(
             id=data["id"],

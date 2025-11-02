@@ -1,5 +1,5 @@
-import logging
 from pathlib import Path
+from loguru import logger
 from domain.entities.user import User
 from domain.value_objects.types import QuestionType
 from domain.value_objects.role import Role
@@ -13,9 +13,6 @@ from infrastructure.persistence.csv_user_repository import CsvUserRepository
 from infrastructure.persistence.csv_session_repository import CsvSessionRepository
 
 
-logger = logging.getLogger(__name__)
-
-
 class Commands:
     """CLI 명령어를 처리하는 클래스입니다.
 
@@ -25,13 +22,16 @@ class Commands:
         auth_service: 인증 서비스
     """
 
-    def __init__(self, data_dir: Path):
+    def __init__(self, data_dir: Path, debug: bool = False):
         """CLI 명령어 핸들러를 초기화합니다.
 
         Args:
             data_dir: 데이터 디렉토리 경로
+            debug: 디버그 모드 활성화
         """
         self.data_dir = data_dir
+        self.debug = debug
+
         survey_repo = CsvSurveyRepository(data_dir)
         response_repo = CsvResponseRepository(data_dir)
         tenant_repo = CsvTenantRepository(data_dir)
@@ -42,6 +42,7 @@ class Commands:
         self.response_service = ResponseService(response_repo, survey_repo)
         self.auth_service = AuthService(tenant_repo, user_repo, session_repo)
         self.tenant_repo = tenant_repo
+        self.user_repo = user_repo
 
     def register_tenant(self, name: str) -> str:
         """테넌트를 등록합니다.
