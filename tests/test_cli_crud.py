@@ -1,5 +1,6 @@
 import pytest
 from domain.value_objects.types import QuestionType
+from tests.conftest import create_session_and_time_data
 
 
 class TestSurveyCRUD:
@@ -103,7 +104,7 @@ class TestSurveyCRUD:
         assert not success
         assert "권한" in error or "삭제" in error
 
-    def test_delete_survey_with_responses(self, survey_commands, sample_manager_user, sample_respondent_user):
+    def test_delete_survey_with_responses(self, survey_commands, sample_manager_user, sample_respondent_user, survey_repo):
         """응답이 있는 설문 삭제 시나리오
 
         시나리오:
@@ -128,10 +129,13 @@ class TestSurveyCRUD:
         )
         assert success
 
+        session_id, time_spent_data = create_session_and_time_data(survey_repo, survey_id)
         success, error = survey_commands.submit_response(
             sample_respondent_user,
             survey_id,
-            {question_id: "테스트 답변"}
+            {question_id: "테스트 답변"},
+            session_id,
+            time_spent_data
         )
         assert success
 
@@ -298,7 +302,7 @@ class TestQuestionCRUD:
         assert not success
         assert "권한" in error or "삭제" in error
 
-    def test_delete_question_with_responses(self, survey_commands, sample_manager_user, sample_respondent_user):
+    def test_delete_question_with_responses(self, survey_commands, sample_manager_user, sample_respondent_user, survey_repo):
         """응답이 있는 질문 삭제 시나리오
 
         시나리오:
@@ -322,10 +326,13 @@ class TestQuestionCRUD:
         )
         assert success
 
+        session_id, time_spent_data = create_session_and_time_data(survey_repo, survey_id)
         success, error = survey_commands.submit_response(
             sample_respondent_user,
             survey_id,
-            {question_id: "테스트 답변"}
+            {question_id: "테스트 답변"},
+            session_id,
+            time_spent_data
         )
         assert success
 
@@ -356,7 +363,7 @@ class TestResponseCRUD:
         assert success
         assert error == ""
 
-    def test_update_response_by_manager(self, survey_commands, sample_manager_user, sample_respondent_user):
+    def test_update_response_by_manager(self, survey_commands, sample_manager_user, sample_respondent_user, survey_repo):
         """매니저가 다른 사용자의 응답 수정 시나리오
 
         시나리오:
@@ -380,10 +387,13 @@ class TestResponseCRUD:
         )
         assert success
 
+        session_id, time_spent_data = create_session_and_time_data(survey_repo, survey_id)
         success, error = survey_commands.submit_response(
             sample_respondent_user,
             survey_id,
-            {question_id: "원본 답변"}
+            {question_id: "원본 답변"},
+            session_id,
+            time_spent_data
         )
         assert success
 
@@ -397,7 +407,7 @@ class TestResponseCRUD:
         )
         assert success
 
-    def test_update_response_unauthorized(self, survey_commands, sample_admin_user, sample_respondent_user, sample_survey):
+    def test_update_response_unauthorized(self, survey_commands, sample_admin_user, sample_respondent_user, sample_survey, survey_repo):
         """다른 사용자의 응답 수정 실패 (권한 없음)
 
         시나리오:
@@ -412,10 +422,13 @@ class TestResponseCRUD:
         )
         assert success
 
+        session_id, time_spent_data = create_session_and_time_data(survey_repo, sample_survey.id)
         success, error = survey_commands.submit_response(
             sample_respondent_user,
             sample_survey.id,
-            {question_id: "원본 답변"}
+            {question_id: "원본 답변"},
+            session_id,
+            time_spent_data
         )
         assert success
 
@@ -459,7 +472,7 @@ class TestResponseCRUD:
         assert success
         assert error == ""
 
-    def test_delete_response_by_manager(self, survey_commands, sample_manager_user, sample_respondent_user):
+    def test_delete_response_by_manager(self, survey_commands, sample_manager_user, sample_respondent_user, survey_repo):
         """매니저가 다른 사용자의 응답 삭제 시나리오
 
         시나리오:
@@ -483,10 +496,13 @@ class TestResponseCRUD:
         )
         assert success
 
+        session_id, time_spent_data = create_session_and_time_data(survey_repo, survey_id)
         success, error = survey_commands.submit_response(
             sample_respondent_user,
             survey_id,
-            {question_id: "답변"}
+            {question_id: "답변"},
+            session_id,
+            time_spent_data
         )
         assert success
 
@@ -499,7 +515,7 @@ class TestResponseCRUD:
         )
         assert success
 
-    def test_delete_response_unauthorized(self, survey_commands, sample_admin_user, sample_respondent_user, sample_survey):
+    def test_delete_response_unauthorized(self, survey_commands, sample_admin_user, sample_respondent_user, sample_survey, survey_repo):
         """다른 사용자의 응답 삭제 실패 (권한 없음)
 
         시나리오:
@@ -514,10 +530,13 @@ class TestResponseCRUD:
         )
         assert success
 
+        session_id, time_spent_data = create_session_and_time_data(survey_repo, sample_survey.id)
         success, error = survey_commands.submit_response(
             sample_respondent_user,
             sample_survey.id,
-            {question_id: "답변"}
+            {question_id: "답변"},
+            session_id,
+            time_spent_data
         )
         assert success
 
@@ -548,7 +567,7 @@ class TestResponseCRUD:
 class TestCRUDIntegration:
     """CRUD 통합 시나리오 테스트"""
 
-    def test_complete_crud_workflow(self, survey_commands, sample_manager_user, sample_respondent_user):
+    def test_complete_crud_workflow(self, survey_commands, sample_manager_user, sample_respondent_user, survey_repo):
         """전체 CRUD 워크플로우 테스트
 
         시나리오:
@@ -584,10 +603,13 @@ class TestCRUDIntegration:
         )
         assert success
 
+        session_id, time_spent_data = create_session_and_time_data(survey_repo, survey_id)
         success, error = survey_commands.submit_response(
             sample_respondent_user,
             survey_id,
-            {q1_id: "답변1", q2_id: "5", q3_id: "A"}
+            {q1_id: "답변1", q2_id: "5", q3_id: "A"},
+            session_id,
+            time_spent_data
         )
         assert success
 

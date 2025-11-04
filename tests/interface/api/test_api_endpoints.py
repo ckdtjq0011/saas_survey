@@ -295,6 +295,10 @@ class TestResponseEndpoints:
             "respondent_id": "respondent_001",
             "answers": {
                 question_id: "답변입니다"
+            },
+            "session_id": str(uuid.uuid4()),
+            "time_spent_data": {
+                question_id: 5
             }
         }
 
@@ -308,11 +312,16 @@ class TestResponseEndpoints:
     def test_submit_response_to_nonexistent_survey(self, client):
         """존재하지 않는 설문에 응답 제출"""
         survey_id = str(uuid.uuid4())
+        question_id = str(uuid.uuid4())
 
         request_data = {
             "respondent_id": "respondent_001",
             "answers": {
-                "question_id": "답변"
+                question_id: "답변"
+            },
+            "session_id": str(uuid.uuid4()),
+            "time_spent_data": {
+                question_id: 5
             }
         }
 
@@ -416,6 +425,10 @@ class TestAPIIntegration:
                 "respondent_id": "patient_001",
                 "answers": {
                     question_id: "5"
+                },
+                "session_id": str(uuid.uuid4()),
+                "time_spent_data": {
+                    question_id: 5
                 }
             }
         )

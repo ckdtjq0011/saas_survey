@@ -1,6 +1,7 @@
 import pytest
 from domain.value_objects.role import Role
 from domain.value_objects.types import QuestionType
+from tests.conftest import create_session_and_time_data
 
 
 class TestErrorPropagation:
@@ -166,7 +167,7 @@ class TestErrorPropagation:
         assert "이미 존재" in result2.error or "중복" in result2.error
 
     def test_invalid_answer_type_propagates_to_response_service(
-        self, auth_service, survey_service, response_service
+        self, auth_service, survey_service, response_service, survey_repo
     ):
         """잘못된 답변 형식 에러가 전파
 
@@ -197,8 +198,9 @@ class TestErrorPropagation:
         )
         question_id = question_result.value
 
+        session_id, time_spent_data = create_session_and_time_data(survey_repo, survey_id)
         result = response_service.submit_response(
-            manager_user, survey_id, {question_id: "10"}
+            manager_user, survey_id, {question_id: "10"}, session_id, time_spent_data
         )
         assert result.is_failure()
         assert ("1-5" in result.error or "1에서 5" in result.error or "범위" in result.error)

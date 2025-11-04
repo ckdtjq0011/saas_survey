@@ -1,5 +1,6 @@
 import pytest
 from domain.value_objects.types import QuestionType
+from tests.conftest import create_session_and_time_data
 
 
 class TestCLIQuestionTypes:
@@ -113,7 +114,7 @@ class TestCLIQuestionTypes:
         assert survey_data["questions"][0]["type"] == "choice"
         assert survey_data["questions"][0]["options"] == options
 
-    def test_submit_response_with_rating(self, survey_commands, sample_manager_user, sample_respondent_user):
+    def test_submit_response_with_rating(self, survey_commands, sample_manager_user, sample_respondent_user, survey_repo):
         """RATING 질문에 응답 제출 테스트
 
         Args:
@@ -142,10 +143,13 @@ class TestCLIQuestionTypes:
         )
         assert success
 
+        session_id, time_spent_data = create_session_and_time_data(survey_repo, survey_id)
         success, error = survey_commands.submit_response(
             sample_respondent_user,
             survey_id,
-            {question_id: "5"}
+            {question_id: "5"},
+            session_id,
+            time_spent_data
         )
         assert success, f"응답 제출 실패: {error}"
 
@@ -155,7 +159,7 @@ class TestCLIQuestionTypes:
         assert "5" in results["results"][0]["answer_distribution"]
         assert results["results"][0]["answer_distribution"]["5"] == 1
 
-    def test_rating_validation(self, survey_commands, sample_manager_user, sample_respondent_user):
+    def test_rating_validation(self, survey_commands, sample_manager_user, sample_respondent_user, survey_repo):
         """RATING 값 범위 검증 테스트
 
         Args:
@@ -184,30 +188,39 @@ class TestCLIQuestionTypes:
         )
         assert success
 
+        session_id, time_spent_data = create_session_and_time_data(survey_repo, survey_id)
         success, error = survey_commands.submit_response(
             sample_respondent_user,
             survey_id,
-            {question_id: "0"}
+            {question_id: "0"},
+            session_id,
+            time_spent_data
         )
         assert not success
         assert "1-5" in error or "범위" in error
 
+        session_id, time_spent_data = create_session_and_time_data(survey_repo, survey_id)
         success, error = survey_commands.submit_response(
             sample_respondent_user,
             survey_id,
-            {question_id: "6"}
+            {question_id: "6"},
+            session_id,
+            time_spent_data
         )
         assert not success
         assert "1-5" in error or "범위" in error
 
+        session_id, time_spent_data = create_session_and_time_data(survey_repo, survey_id)
         success, error = survey_commands.submit_response(
             sample_respondent_user,
             survey_id,
-            {question_id: "3"}
+            {question_id: "3"},
+            session_id,
+            time_spent_data
         )
         assert success
 
-    def test_mixed_question_types_workflow(self, survey_commands, sample_manager_user, sample_respondent_user):
+    def test_mixed_question_types_workflow(self, survey_commands, sample_manager_user, sample_respondent_user, survey_repo):
         """여러 질문 타입 혼합 워크플로우 테스트
 
         Args:
@@ -260,6 +273,7 @@ class TestCLIQuestionTypes:
         assert survey_data["questions"][1]["type"] == "rating"
         assert survey_data["questions"][2]["type"] == "choice"
 
+        session_id, time_spent_data = create_session_and_time_data(survey_repo, survey_id)
         success, error = survey_commands.submit_response(
             sample_respondent_user,
             survey_id,
@@ -267,7 +281,9 @@ class TestCLIQuestionTypes:
                 q1_id: "매우 좋은 서비스입니다",
                 q2_id: "5",
                 q3_id: "항목A"
-            }
+            },
+            session_id,
+            time_spent_data
         )
         assert success, f"응답 제출 실패: {error}"
 

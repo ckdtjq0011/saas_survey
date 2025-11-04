@@ -8,13 +8,14 @@ CRUD 커버리지: Response(CRUD) 집중
 import pytest
 from domain.value_objects.role import Role
 from domain.value_objects.types import QuestionType
+from tests.conftest import create_session_and_time_data
 
 
 class TestResponseLifecycleManagement:
     """고객 피드백 응답 관리 라이프사이클 테스트"""
 
     def test_customer_feedback_response_editing(
-        self, auth_service, survey_service, response_service, response_repo
+        self, auth_service, survey_service, response_service, response_repo, survey_repo
     ):
         """고객 피드백 응답 수정 및 재제출
 
@@ -93,6 +94,7 @@ class TestResponseLifecycleManagement:
         customer_validate = auth_service.validate_session(customer_login.value)
         customer_user, _ = customer_validate.value
 
+        session_id, time_spent_data = create_session_and_time_data(survey_repo, survey_id)
         initial_submit = response_service.submit_response(
             customer_user,
             survey_id,
@@ -100,7 +102,9 @@ class TestResponseLifecycleManagement:
                 q1_id: "3",
                 q2_id: "배송 속도",
                 q3_id: "포장이 조금 부실했습니다"
-            }
+            },
+            session_id,
+            time_spent_data
         )
         assert initial_submit.is_success()
 
@@ -146,7 +150,7 @@ class TestResponseLifecycleManagement:
         assert final_data[q1_id]["average"] == 4.0
 
     def test_spam_response_deletion(
-        self, auth_service, survey_service, response_service, response_repo
+        self, auth_service, survey_service, response_service, response_repo, survey_repo
     ):
         """스팸 응답 탐지 및 삭제
 
@@ -206,10 +210,13 @@ class TestResponseLifecycleManagement:
         ratings = ["5", "4", "5", "1", "4"]
 
         for participant, rating in zip(participants, ratings):
+            session_id1, time_spent_data1 = create_session_and_time_data(survey_repo, survey_id)
             submit = response_service.submit_response(
                 participant,
                 survey_id,
-                {q1_id: rating}
+                {q1_id: rating},
+                session_id1,
+                time_spent_data1
             )
             assert submit.is_success()
 
@@ -236,7 +243,7 @@ class TestResponseLifecycleManagement:
         assert final_results.value[q1_id]["count"] == 4
 
     def test_response_modification_statistics(
-        self, auth_service, survey_service, response_service, response_repo
+        self, auth_service, survey_service, response_service, response_repo, survey_repo
     ):
         """응답 수정 후 통계 재집계 정확성 확인
 
@@ -297,10 +304,13 @@ class TestResponseLifecycleManagement:
         initial_ratings = ["3", "4", "2", "5", "3", "4", "3", "5"]
 
         for respondent, rating in zip(respondents, initial_ratings):
+            session_id2, time_spent_data2 = create_session_and_time_data(survey_repo, survey_id)
             submit = response_service.submit_response(
                 respondent,
                 survey_id,
-                {q1_id: rating}
+                {q1_id: rating},
+                session_id2,
+                time_spent_data2
             )
             assert submit.is_success()
 

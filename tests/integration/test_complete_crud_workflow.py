@@ -1,6 +1,7 @@
 import pytest
 from domain.value_objects.role import Role
 from domain.value_objects.types import QuestionType
+from tests.conftest import create_session_and_time_data
 
 
 def test_complete_crud_workflow(auth_service, survey_service, response_service, tenant_repo, user_repo, survey_repo):
@@ -91,7 +92,8 @@ def test_complete_crud_workflow(auth_service, survey_service, response_service, 
         questions[2].id: "A"
     }
 
-    submit_result = response_service.submit_response(respondent_user, survey_id, answers)
+    session_id, time_spent_data = create_session_and_time_data(survey_repo, survey_id)
+    submit_result = response_service.submit_response(respondent_user, survey_id, answers, session_id, time_spent_data)
     assert submit_result.is_success()
 
     results_result = response_service.get_survey_results(admin_user, survey_id)
@@ -167,7 +169,7 @@ def test_multitenant_isolation(auth_service, survey_service):
     assert "다른 테넌트" in access_a_from_b.error
 
 
-def test_validation_rating_answer(auth_service, survey_service, response_service):
+def test_validation_rating_answer(auth_service, survey_service, response_service, survey_repo):
     """RATING 답변 검증 테스트"""
 
     tenant_id = auth_service.register_tenant("테스트회사")
@@ -190,15 +192,17 @@ def test_validation_rating_answer(auth_service, survey_service, response_service
     )
     question_id = q_result.value
 
-    invalid_result = response_service.submit_response(admin_user, survey_id, {question_id: "10"})
+    session_id, time_spent_data = create_session_and_time_data(survey_repo, survey_id)
+    invalid_result = response_service.submit_response(admin_user, survey_id, {question_id: "10"}, session_id, time_spent_data)
     assert invalid_result.is_failure()
     assert "1-5 사이여야 합니다" in invalid_result.error
 
-    valid_result = response_service.submit_response(admin_user, survey_id, {question_id: "4"})
+    session_id2, time_spent_data2 = create_session_and_time_data(survey_repo, survey_id)
+    valid_result = response_service.submit_response(admin_user, survey_id, {question_id: "4"}, session_id2, time_spent_data2)
     assert valid_result.is_success()
 
 
-def test_validation_multiple_choice_answer(auth_service, survey_service, response_service):
+def test_validation_multiple_choice_answer(auth_service, survey_service, response_service, survey_repo):
     """MULTIPLE_CHOICE 답변 검증 테스트"""
 
     tenant_id = auth_service.register_tenant("테스트회사")
@@ -221,9 +225,11 @@ def test_validation_multiple_choice_answer(auth_service, survey_service, respons
     )
     question_id = q_result.value
 
-    invalid_result = response_service.submit_response(admin_user, survey_id, {question_id: "D"})
+    session_id, time_spent_data = create_session_and_time_data(survey_repo, survey_id)
+    invalid_result = response_service.submit_response(admin_user, survey_id, {question_id: "D"}, session_id, time_spent_data)
     assert invalid_result.is_failure()
     assert "유효하지 않은 선택지입니다" in invalid_result.error
 
-    valid_result = response_service.submit_response(admin_user, survey_id, {question_id: "B"})
+    session_id2, time_spent_data2 = create_session_and_time_data(survey_repo, survey_id)
+    valid_result = response_service.submit_response(admin_user, survey_id, {question_id: "B"}, session_id2, time_spent_data2)
     assert valid_result.is_success()

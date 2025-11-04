@@ -7,12 +7,13 @@ from domain.entities.response import Response
 from domain.value_objects.role import Role
 from domain.value_objects.types import QuestionType
 from application.response_service import ResponseService
+from tests.conftest import create_session_and_time_data
 
 
 @pytest.fixture
-def response_service(response_repo, survey_repo):
+def response_service(response_repo, response_history_repo, survey_repo):
     """ResponseService 픽스처"""
-    return ResponseService(response_repo, survey_repo)
+    return ResponseService(response_repo, response_history_repo, survey_repo)
 
 
 class TestDuplicateResponseHandling:
@@ -52,17 +53,25 @@ class TestDuplicateResponseHandling:
         survey_repo.save_survey(survey)
         survey_repo.save_question(question)
 
+        session_id, time_spent_data = create_session_and_time_data(survey_repo, survey_id)
+
         first_result = response_service.submit_response(
             user=sample_respondent_user,
             survey_id=survey_id,
-            answers={question_id: "첫 번째 답변"}
+            answers={question_id: "첫 번째 답변"},
+            session_id=session_id,
+            time_spent_data=time_spent_data
         )
         assert first_result.is_success()
+
+        session_id, time_spent_data = create_session_and_time_data(survey_repo, survey_id)
 
         second_result = response_service.submit_response(
             user=sample_respondent_user,
             survey_id=survey_id,
-            answers={question_id: "두 번째 답변"}
+            answers={question_id: "두 번째 답변"},
+            session_id=session_id,
+            time_spent_data=time_spent_data
         )
         assert second_result.is_success()
 
@@ -111,10 +120,14 @@ class TestDuplicateResponseHandling:
             user_id = user_result.value
             user = auth_service.user_repository.find_user_by_id(user_id)
 
+            session_id, time_spent_data = create_session_and_time_data(survey_repo, survey_id)
+
             result = response_service.submit_response(
                 user=user,
                 survey_id=survey_id,
-                answers={question_id: f"답변{i}"}
+                answers={question_id: f"답변{i}"},
+                session_id=session_id,
+                time_spent_data=time_spent_data
             )
             assert result.is_success()
 
@@ -163,10 +176,14 @@ class TestDuplicateResponseHandling:
             questions[1].id: "답변2"
         }
 
+        session_id, time_spent_data = create_session_and_time_data(survey_repo, survey_id)
+
         result = response_service.submit_response(
             user=sample_respondent_user,
             survey_id=survey_id,
-            answers=partial_answers
+            answers=partial_answers,
+            session_id=session_id,
+            time_spent_data=time_spent_data
         )
 
         assert result.is_success()
@@ -208,10 +225,14 @@ class TestPermissionRefinement:
         survey_repo.save_survey(survey)
         survey_repo.save_question(question)
 
+        session_id, time_spent_data = create_session_and_time_data(survey_repo, survey_id)
+
         submit_result = response_service.submit_response(
             user=sample_respondent_user,
             survey_id=survey_id,
-            answers={question_id: "원래 답변"}
+            answers={question_id: "원래 답변"},
+            session_id=session_id,
+            time_spent_data=time_spent_data
         )
         assert submit_result.is_success()
 
@@ -391,7 +412,9 @@ class TestStatisticsAccuracy:
                 question_id=question_id,
                 answer=str(rating),
                 respondent_id=str(uuid.uuid4()),
-                created_at=datetime.now()
+                answered_at=datetime.now(),
+                session_id=str(uuid.uuid4()),
+                time_spent_seconds=10
             )
             response_service.response_repository.save(response)
 
@@ -447,7 +470,9 @@ class TestStatisticsAccuracy:
                 question_id=question_id,
                 answer=answer,
                 respondent_id=str(uuid.uuid4()),
-                created_at=datetime.now()
+                answered_at=datetime.now(),
+                session_id=str(uuid.uuid4()),
+                time_spent_seconds=10
             )
             response_service.response_repository.save(response)
 
@@ -505,7 +530,9 @@ class TestStatisticsAccuracy:
                 question_id=question_id,
                 answer=answer,
                 respondent_id=str(uuid.uuid4()),
-                created_at=datetime.now()
+                answered_at=datetime.now(),
+                session_id=str(uuid.uuid4()),
+                time_spent_seconds=10
             )
             response_service.response_repository.save(response)
 

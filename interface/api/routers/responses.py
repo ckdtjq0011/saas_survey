@@ -74,7 +74,9 @@ def submit_response(
         HTTPException: 설문을 찾을 수 없거나 응답 제출 실패 시
     """
     try:
-        result = service.submit_response(user, survey_id, request.answers)
+        result = service.submit_response(
+            user, survey_id, request.answers, request.session_id, request.time_spent_data
+        )
         if result.is_failure():
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,

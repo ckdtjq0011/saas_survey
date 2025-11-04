@@ -70,7 +70,9 @@ class TestCSVCorruptionRecovery:
             question_id="question1",
             respondent_id="respondent1",
             answer="답변1",
-            created_at=datetime.now()
+            answered_at=datetime.now(),
+            session_id=str(uuid.uuid4()),
+            time_spent_seconds=10
         )
         response_repo.save(response1)
 

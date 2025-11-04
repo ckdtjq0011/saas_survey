@@ -5,10 +5,13 @@ from domain.value_objects.types import QuestionType
 from domain.value_objects.role import Role
 from application.survey_service import SurveyService
 from application.response_service import ResponseService
+from application.survey_session_service import SurveySessionService
 from application.auth_service import AuthService
 from application.category_service import CategoryService
 from infrastructure.persistence.csv_survey_repository import CsvSurveyRepository
 from infrastructure.persistence.csv_response_repository import CsvResponseRepository
+from infrastructure.persistence.csv_survey_session_repository import CsvSurveySessionRepository
+from infrastructure.persistence.csv_response_history_repository import CsvResponseHistoryRepository
 from infrastructure.persistence.csv_tenant_repository import CsvTenantRepository
 from infrastructure.persistence.csv_user_repository import CsvUserRepository
 from infrastructure.persistence.csv_session_repository import CsvSessionRepository
@@ -21,6 +24,7 @@ class Commands:
     Attributes:
         survey_service: 설문 서비스
         response_service: 응답 서비스
+        survey_session_service: 설문 세션 서비스
         auth_service: 인증 서비스
         category_service: 범주 서비스
     """
@@ -37,13 +41,16 @@ class Commands:
 
         survey_repo = CsvSurveyRepository(data_dir)
         response_repo = CsvResponseRepository(data_dir)
+        survey_session_repo = CsvSurveySessionRepository(data_dir)
+        response_history_repo = CsvResponseHistoryRepository(data_dir)
         tenant_repo = CsvTenantRepository(data_dir)
         user_repo = CsvUserRepository(data_dir)
         session_repo = CsvSessionRepository(data_dir)
         category_repo = CsvCategoryRepository(data_dir)
 
         self.survey_service = SurveyService(survey_repo)
-        self.response_service = ResponseService(response_repo, survey_repo)
+        self.response_service = ResponseService(response_repo, response_history_repo, survey_repo)
+        self.survey_session_service = SurveySessionService(survey_session_repo, survey_repo)
         self.auth_service = AuthService(tenant_repo, user_repo, session_repo)
         self.category_service = CategoryService(category_repo)
         self.tenant_repo = tenant_repo
@@ -312,22 +319,33 @@ class Commands:
             logger.exception("설문 목록 조회 중 오류 발생")
             raise
 
-    def submit_response(self, user: User, survey_id: str, answers: dict[str, str]) -> tuple[bool, str]:
+    def submit_response(
+        self,
+        user: User,
+        survey_id: str,
+        answers: dict[str, str],
+        session_id: str,
+        time_spent_data: dict[str, int],
+    ) -> tuple[bool, str]:
         """응답을 제출합니다.
 
         Args:
             user: 사용자 엔티티
             survey_id: 설문 ID
             answers: 질문 ID와 답변 딕셔너리
+            session_id: 세션 ID
+            time_spent_data: 질문 ID와 소요 시간(초) 딕셔너리
 
         Returns:
             (성공 여부, 에러 메시지)
         """
         try:
-            result = self.response_service.submit_response(user, survey_id, answers)
+            result = self.response_service.submit_response(
+                user, survey_id, answers, session_id, time_spent_data
+            )
 
             if result.is_success():
-                logger.info("응답 제출 완료", extra={"user_id": user.id})
+                logger.info("응답 제출 완료", extra={"user_id": user.id, "session_id": session_id})
                 return True, ""
             else:
                 logger.warning(f"응답 제출 실패: {result.error}")
@@ -665,4 +683,77 @@ class Commands:
                 return False, result.error
         except Exception:
             logger.exception("범주 삭제 중 오류 발생")
+            raise
+
+    def start_survey_session(self, user: User, survey_id: str, user_agent: str) -> tuple[bool, str]:
+        """설문 세션을 시작합니다.
+
+        Args:
+            user: 사용자 엔티티
+            survey_id: 설문 ID
+            user_agent: 브라우저/디바이스 정보
+
+        Returns:
+            (성공 여부, 세션 ID 또는 에러 메시지)
+        """
+        try:
+            result = self.survey_session_service.start_session(user, survey_id, user_agent)
+
+            if result.is_success():
+                session_id = result.value
+                logger.info("설문 세션 시작", extra={"user_id": user.id, "session_id": session_id})
+                return True, session_id
+            else:
+                logger.warning(f"설문 세션 시작 실패: {result.error}")
+                return False, result.error
+        except Exception:
+            logger.exception("설문 세션 시작 중 오류 발생")
+            raise
+
+    def complete_survey_session(self, session_id: str, total_time_seconds: int) -> tuple[bool, str]:
+        """설문 세션을 완료 처리합니다.
+
+        Args:
+            session_id: 세션 ID
+            total_time_seconds: 총 소요 시간 (초)
+
+        Returns:
+            (성공 여부, 에러 메시지)
+        """
+        try:
+            result = self.survey_session_service.complete_session(session_id, total_time_seconds)
+
+            if result.is_success():
+                logger.info("설문 세션 완료", extra={"session_id": session_id})
+                return True, ""
+            else:
+                logger.warning(f"설문 세션 완료 실패: {result.error}")
+                return False, result.error
+        except Exception:
+            logger.exception("설문 세션 완료 중 오류 발생")
+            raise
+
+    def get_response_history(self, user: User, response_id: str) -> tuple[bool, str, list[dict[str, str]] | None]:
+        """응답 수정 이력을 조회합니다.
+
+        Args:
+            user: 사용자 엔티티
+            response_id: 응답 ID
+
+        Returns:
+            (성공 여부, 에러 메시지, 이력 목록)
+        """
+        try:
+            result = self.response_service.get_response_history(user, response_id)
+
+            if result.is_success():
+                histories = result.value
+                history_dicts = [h.to_dict() for h in histories]
+                logger.info("응답 이력 조회 완료", extra={"response_id": response_id})
+                return True, "", history_dicts
+            else:
+                logger.warning(f"응답 이력 조회 실패: {result.error}")
+                return False, result.error, None
+        except Exception:
+            logger.exception("응답 이력 조회 중 오류 발생")
             raise

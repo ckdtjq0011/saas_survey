@@ -1,3 +1,6 @@
+import platform
+import time
+from datetime import datetime
 from domain.entities.user import User
 from domain.value_objects.types import QuestionType
 from interface.cli.handlers.base_handler import BaseHandler
@@ -20,6 +23,15 @@ class ResponseHandler(BaseHandler):
             if not survey_id:
                 return
 
+            user_agent = f"{platform.system()} {platform.release()} - Python CLI"
+
+            success_session, session_id = self.commands.start_survey_session(user, survey_id, user_agent)
+            if not success_session:
+                self.ui.print_error(f"세션 시작 실패: {session_id}")
+                return
+
+            session_start_time = time.time()
+
             success, error, survey_data = self.commands.get_survey(user, survey_id)
             if not success or not survey_data:
                 self.ui.print_error(f"설문 조회 실패: {error}")
@@ -29,15 +41,21 @@ class ResponseHandler(BaseHandler):
             self.ui.print_info(f"설명: {survey_data['description']}")
             self.ui.print_info("")
 
-            answers = self._collect_answers(survey_data["questions"])
+            answers, time_spent_data = self._collect_answers_with_timing(survey_data["questions"])
             if not answers:
                 self.ui.print_warning("응답이 취소되었습니다")
                 return
 
             if self.confirm_operation("응답을 제출하시겠습니까?"):
-                success, error = self.commands.submit_response(user, survey_id, answers)
+                total_time_seconds = int(time.time() - session_start_time)
+
+                success, error = self.commands.submit_response(
+                    user, survey_id, answers, session_id, time_spent_data
+                )
+
                 if success:
-                    self.ui.print_success("응답이 제출되었습니다")
+                    self.commands.complete_survey_session(session_id, total_time_seconds)
+                    self.ui.print_success(f"응답이 제출되었습니다 (소요 시간: {total_time_seconds}초)")
                 else:
                     self.ui.print_error(f"응답 제출 실패: {error}")
 
@@ -289,3 +307,55 @@ class ResponseHandler(BaseHandler):
                 answers[q_id] = answer
 
         return answers
+
+    def _collect_answers_with_timing(self, questions: list[dict]) -> tuple[dict[str, str], dict[str, int]] | tuple[None, None]:
+        """질문에 대한 답변을 수집하며 각 질문별 소요 시간을 측정합니다.
+
+        Args:
+            questions: 질문 리스트
+
+        Returns:
+            (질문 ID와 답변 딕셔너리, 질문 ID와 소요 시간 딕셔너리), 취소 시 (None, None)
+        """
+        answers = {}
+        time_spent_data = {}
+        total_questions = len(questions)
+
+        for idx, question in enumerate(questions, 1):
+            q_id = question["id"]
+            q_text = question["text"]
+            q_type = question["type"]
+            q_options = question.get("options", [])
+
+            progress = int((idx - 1) / total_questions * 100)
+            self.ui.print_info(f"\n진행률: {progress}% ({idx-1}/{total_questions})")
+            self.ui.print_info(f"[Q{idx}] {q_text}")
+
+            question_start_time = time.time()
+
+            if q_type == QuestionType.TEXT.value:
+                answer = self.ui.get_input("답변")
+                answers[q_id] = answer
+
+            elif q_type == QuestionType.MULTIPLE_CHOICE.value:
+                if q_options:
+                    for opt_idx, opt in enumerate(q_options, 1):
+                        self.ui.print_info(f"  {opt_idx}. {opt}")
+                    choice = self.ui.get_int_input("선택", default=1)
+                    if 1 <= choice <= len(q_options):
+                        answers[q_id] = q_options[choice - 1]
+                    else:
+                        self.ui.print_warning("잘못된 선택입니다")
+                        return None, None
+
+            elif q_type == QuestionType.RATING.value:
+                self.ui.print_info("  평점: 1-5")
+                answer = self.ui.get_validated_input("평점", validate_rating_answer)
+                answers[q_id] = answer
+
+            question_end_time = time.time()
+            time_spent_seconds = int(question_end_time - question_start_time)
+            time_spent_data[q_id] = time_spent_seconds
+
+        self.ui.print_info(f"\n진행률: 100% ({total_questions}/{total_questions})")
+        return answers, time_spent_data

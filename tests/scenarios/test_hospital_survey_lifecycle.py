@@ -7,13 +7,14 @@
 import pytest
 from domain.value_objects.role import Role
 from domain.value_objects.types import QuestionType
+from tests.conftest import create_session_and_time_data
 
 
 class TestHospitalSurveyLifecycle:
     """병원 설문 전체 라이프사이클 엔드투엔드 테스트"""
 
     def test_complete_hospital_survey_lifecycle(
-        self, auth_service, survey_service, response_service
+        self, auth_service, survey_service, response_service, survey_repo
     ):
         """병원 환자 만족도 조사의 완전한 라이프사이클 테스트
 
@@ -126,6 +127,7 @@ class TestHospitalSurveyLifecycle:
 
         submitted_response_ids = []
         for patient, (rating, choice, text) in zip(patients, responses_data):
+            session_id, time_spent_data = create_session_and_time_data(survey_repo, survey_id)
             submit_result = response_service.submit_response(
                 patient,
                 survey_id,
@@ -133,7 +135,9 @@ class TestHospitalSurveyLifecycle:
                     q1_id: rating,
                     q2_id: choice,
                     q3_id: text
-                }
+                },
+                session_id,
+                time_spent_data
             )
             assert submit_result.is_success()
 

@@ -207,7 +207,9 @@ class TestCsvResponseRepository:
                 question_id=question_id,
                 answer=f"답변{i}",
                 respondent_id=str(uuid.uuid4()),
-                created_at=datetime.now()
+                answered_at=datetime.now(),
+                session_id=str(uuid.uuid4()),
+                time_spent_seconds=10
             )
             repo.save(response)
 
@@ -230,7 +232,9 @@ class TestCsvResponseRepository:
                 question_id=str(uuid.uuid4()),
                 answer=f"답변{i}",
                 respondent_id=str(uuid.uuid4()),
-                created_at=datetime.now()
+                answered_at=datetime.now(),
+                session_id=str(uuid.uuid4()),
+                time_spent_seconds=10
             )
             repo.save(response)
 
@@ -253,7 +257,9 @@ class TestCsvResponseRepository:
             question_id=str(uuid.uuid4()),
             answer="답변",
             respondent_id=str(uuid.uuid4()),
-            created_at=datetime.now()
+            answered_at=datetime.now(),
+            session_id=str(uuid.uuid4()),
+            time_spent_seconds=10
         )
         repo.save(response)
 

@@ -7,9 +7,13 @@ class SubmitResponseRequest(BaseModel):
     Attributes:
         respondent_id: 응답자 ID
         answers: 질문 ID와 답변의 딕셔너리
+        session_id: 세션 ID
+        time_spent_data: 질문 ID와 소요 시간(초)의 딕셔너리
     """
     respondent_id: str = Field(..., min_length=1, max_length=100, description="응답자 ID")
     answers: dict[str, str] = Field(..., description="질문 ID와 답변의 딕셔너리")
+    session_id: str = Field(..., description="세션 ID")
+    time_spent_data: dict[str, int] = Field(..., description="질문 ID와 소요 시간(초)의 딕셔너리")
 
 
 class SubmitResponseResponse(BaseModel):

@@ -8,13 +8,14 @@ CRUD 커버리지: Survey(CRUD), Question(CRUD), Response(CRUD), User(CRUD)
 import pytest
 from domain.value_objects.role import Role
 from domain.value_objects.types import QuestionType
+from tests.conftest import create_session_and_time_data
 
 
 class TestEducationEvaluationLifecycle:
     """대학교 강의평가 전체 라이프사이클 엔드투엔드 테스트"""
 
     def test_university_course_evaluation_full_cycle(
-        self, auth_service, survey_service, response_service, response_repo
+        self, auth_service, survey_service, response_service, response_repo, survey_repo
     ):
         """대학교 강의평가 전체 라이프사이클 (전체 CRUD 통합)
 
@@ -158,6 +159,7 @@ class TestEducationEvaluationLifecycle:
 
         submitted_response_ids = []
         for student, (r1, r2, mc, txt, r5) in zip(students, evaluation_data):
+            session_id, time_spent_data = create_session_and_time_data(survey_repo, survey_id)
             submit_result = response_service.submit_response(
                 student,
                 survey_id,
@@ -167,7 +169,9 @@ class TestEducationEvaluationLifecycle:
                     q3_id: mc,
                     q4_id: txt,
                     q5_id: r5
-                }
+                },
+                session_id,
+                time_spent_data
             )
             assert submit_result.is_success()
 

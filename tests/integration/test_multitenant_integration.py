@@ -1,6 +1,7 @@
 import pytest
 from domain.value_objects.role import Role
 from domain.value_objects.types import QuestionType
+from tests.conftest import create_session_and_time_data
 
 
 class TestMultitenantIntegration:
@@ -100,7 +101,7 @@ class TestMultitenantIntegration:
         assert all(u.tenant_id == tenant_b for u in users_b)
 
     def test_cross_tenant_response_access_prevention(
-        self, auth_service, survey_service, response_service, response_repo
+        self, auth_service, survey_service, response_service, response_repo, survey_repo
     ):
         """테넌트 간 응답 접근 차단
 
@@ -144,8 +145,9 @@ class TestMultitenantIntegration:
         )
         question_b_id = question_b.value
 
+        session_id, time_spent_data = create_session_and_time_data(survey_repo, survey_b_id)
         response_service.submit_response(
-            user_b, survey_b_id, {question_b_id: "답변"}
+            user_b, survey_b_id, {question_b_id: "답변"}, session_id, time_spent_data
         )
 
         result = response_service.get_survey_results(user_a, survey_b_id)

@@ -77,14 +77,18 @@ class TestResponseHandlerSubmitResponse:
             ]
         }
         mock_commands.get_survey.return_value = (True, None, survey_data)
+        mock_commands.start_survey_session.return_value = (True, "session123")
         mock_ui.confirm.return_value = True
         mock_commands.submit_response.return_value = (True, None)
+        mock_commands.complete_survey_session.return_value = (True, None)
 
-        with patch.object(response_handler, '_collect_answers', return_value={"q1": "답변1"}):
+        with patch.object(response_handler, '_collect_answers_with_timing', return_value=({"q1": "답변1"}, {"q1": 5})):
             response_handler.submit_response_flow(sample_user)
 
         mock_commands.submit_response.assert_called_once()
-        mock_ui.print_success.assert_called_once_with("응답이 제출되었습니다")
+        mock_ui.print_success.assert_called_once()
+        call_args = mock_ui.print_success.call_args[0][0]
+        assert "소요 시간" in call_args
 
     def test_submit_multiple_choice_response_success(self, response_handler, mock_ui, mock_commands, sample_user):
         """MULTIPLE_CHOICE 응답 제출 성공"""
@@ -101,13 +105,17 @@ class TestResponseHandlerSubmitResponse:
             ]
         }
         mock_commands.get_survey.return_value = (True, None, survey_data)
+        mock_commands.start_survey_session.return_value = (True, "session123")
         mock_ui.confirm.return_value = True
         mock_commands.submit_response.return_value = (True, None)
+        mock_commands.complete_survey_session.return_value = (True, None)
 
-        with patch.object(response_handler, '_collect_answers', return_value={"q1": "옵션2"}):
+        with patch.object(response_handler, '_collect_answers_with_timing', return_value=({"q1": "옵션2"}, {"q1": 5})):
             response_handler.submit_response_flow(sample_user)
 
         mock_ui.print_success.assert_called_once()
+        call_args = mock_ui.print_success.call_args[0][0]
+        assert "소요 시간" in call_args
 
     def test_submit_rating_response_success(self, response_handler, mock_ui, mock_commands, sample_user):
         """RATING 응답 제출 성공"""
@@ -124,13 +132,17 @@ class TestResponseHandlerSubmitResponse:
             ]
         }
         mock_commands.get_survey.return_value = (True, None, survey_data)
+        mock_commands.start_survey_session.return_value = (True, "session123")
         mock_ui.confirm.return_value = True
         mock_commands.submit_response.return_value = (True, None)
+        mock_commands.complete_survey_session.return_value = (True, None)
 
-        with patch.object(response_handler, '_collect_answers', return_value={"q1": "5"}):
+        with patch.object(response_handler, '_collect_answers_with_timing', return_value=({"q1": "5"}, {"q1": 5})):
             response_handler.submit_response_flow(sample_user)
 
         mock_ui.print_success.assert_called_once()
+        call_args = mock_ui.print_success.call_args[0][0]
+        assert "소요 시간" in call_args
 
     def test_submit_response_no_survey(self, response_handler, mock_ui, mock_commands, sample_user):
         """설문이 없을 때 응답 제출 시도"""
@@ -168,7 +180,7 @@ class TestResponseHandlerSubmitResponse:
         mock_commands.list_surveys.return_value = [
             {"id": "survey123", "title": "테스트 설문"}
         ]
-        mock_ui.get_int_input.side_effect = [1, 99]
+        mock_ui.get_int_input.return_value = 1
 
         survey_data = {
             "title": "테스트 설문",
@@ -178,10 +190,12 @@ class TestResponseHandlerSubmitResponse:
             ]
         }
         mock_commands.get_survey.return_value = (True, None, survey_data)
+        mock_commands.start_survey_session.return_value = (True, "session123")
 
-        response_handler.submit_response_flow(sample_user)
+        with patch.object(response_handler, '_collect_answers_with_timing', return_value=(None, None)):
+            response_handler.submit_response_flow(sample_user)
 
-        mock_ui.print_warning.assert_called()
+        mock_ui.print_warning.assert_called_with("응답이 취소되었습니다")
 
 
 class TestResponseHandlerViewResults:
@@ -255,7 +269,9 @@ class TestResponseHandlerUpdateResponse:
             question_id="q1",
             answer="원래 답변",
             respondent_id=sample_user.id,
-            created_at=datetime.now()
+            answered_at=datetime.now(),
+            session_id="session123",
+            time_spent_seconds=10
         )
         mock_commands.response_service.response_repository.find_by_question_id.return_value = [mock_response]
 
@@ -310,7 +326,9 @@ class TestResponseHandlerUpdateResponse:
             question_id="q1",
             answer="원래 답변",
             respondent_id=sample_user.id,
-            created_at=datetime.now()
+            answered_at=datetime.now(),
+            session_id="session123",
+            time_spent_seconds=10
         )
         mock_commands.response_service.response_repository.find_by_question_id.return_value = [mock_response]
 
@@ -346,7 +364,9 @@ class TestResponseHandlerDeleteResponse:
             question_id="q1",
             answer="삭제할 답변",
             respondent_id=sample_user.id,
-            created_at=datetime.now()
+            answered_at=datetime.now(),
+            session_id="session123",
+            time_spent_seconds=10
         )
         mock_commands.response_service.response_repository.find_by_question_id.return_value = [mock_response]
 
@@ -379,7 +399,9 @@ class TestResponseHandlerDeleteResponse:
             question_id="q1",
             answer="삭제할 답변",
             respondent_id=sample_user.id,
-            created_at=datetime.now()
+            answered_at=datetime.now(),
+            session_id="session123",
+            time_spent_seconds=10
         )
         mock_commands.response_service.response_repository.find_by_question_id.return_value = [mock_response]
 
@@ -410,7 +432,9 @@ class TestResponseHandlerDeleteResponse:
             question_id="q1",
             answer="삭제할 답변",
             respondent_id=sample_user.id,
-            created_at=datetime.now()
+            answered_at=datetime.now(),
+            session_id="session123",
+            time_spent_seconds=10
         )
         mock_commands.response_service.response_repository.find_by_question_id.return_value = [mock_response]
 

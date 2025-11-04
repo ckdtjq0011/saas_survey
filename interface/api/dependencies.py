@@ -4,6 +4,7 @@ from application.survey_service import SurveyService
 from application.response_service import ResponseService
 from infrastructure.persistence.csv_survey_repository import CsvSurveyRepository
 from infrastructure.persistence.csv_response_repository import CsvResponseRepository
+from infrastructure.persistence.csv_response_history_repository import CsvResponseHistoryRepository
 from domain.entities.user import User
 from domain.value_objects.role import Role
 
@@ -47,4 +48,5 @@ def get_response_service() -> ResponseService:
     """
     survey_repo = CsvSurveyRepository(DATA_DIR)
     response_repo = CsvResponseRepository(DATA_DIR)
-    return ResponseService(response_repo, survey_repo)
+    response_history_repo = CsvResponseHistoryRepository(DATA_DIR)
+    return ResponseService(response_repo, response_history_repo, survey_repo)

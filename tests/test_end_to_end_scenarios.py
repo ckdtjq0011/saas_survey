@@ -1,12 +1,13 @@
 import pytest
 import csv
 from pathlib import Path
+from tests.conftest import create_session_and_time_data
 
 
 class TestQuestionTypeScenarios:
     """질문 유형별 엔드투엔드 시나리오"""
 
-    def test_all_question_types(self, survey_commands, sample_manager_user, sample_respondent_user):
+    def test_all_question_types(self, survey_commands, sample_manager_user, sample_respondent_user, survey_repo):
         """모든 질문 유형이 올바르게 작동하는지 테스트합니다.
 
         Args:
@@ -52,6 +53,7 @@ class TestQuestionTypeScenarios:
         )
         assert success
 
+        session_id, time_spent_data = create_session_and_time_data(survey_repo, survey_id)
         success, error = survey_commands.submit_response(
             sample_respondent_user,
             survey_id,
@@ -59,7 +61,9 @@ class TestQuestionTypeScenarios:
                 text_q: "이것은 텍스트 응답입니다",
                 rating_q: "4",
                 choice_q: "옵션2"
-            }
+            },
+            session_id,
+            time_spent_data
         )
         assert success
 
@@ -71,7 +75,7 @@ class TestQuestionTypeScenarios:
 class TestMultipleRespondentsScenarios:
     """다중 응답자 엔드투엔드 시나리오"""
 
-    def test_multiple_respondents(self, survey_commands, sample_manager_user, sample_respondent_user, user_repo, sample_tenant):
+    def test_multiple_respondents(self, survey_commands, sample_manager_user, sample_respondent_user, user_repo, sample_tenant, survey_repo):
         """여러 응답자의 응답이 올바르게 집계되는지 테스트합니다.
 
         Args:
@@ -139,13 +143,16 @@ class TestMultipleRespondentsScenarios:
         ]
 
         for respondent, (rating, choice) in zip(respondents, responses_data):
+            session_id, time_spent_data = create_session_and_time_data(survey_repo, survey_id)
             success, error = survey_commands.submit_response(
                 respondent,
                 survey_id,
                 {
                     rating_q: rating,
                     choice_q: choice
-                }
+                },
+                session_id,
+                time_spent_data
             )
             assert success
 
@@ -157,7 +164,7 @@ class TestMultipleRespondentsScenarios:
 class TestDataPersistenceScenarios:
     """CSV 데이터 영속성 엔드투엔드 시나리오"""
 
-    def test_data_persistence(self, survey_commands, temp_data_dir, sample_manager_user, sample_respondent_user):
+    def test_data_persistence(self, survey_commands, temp_data_dir, sample_manager_user, sample_respondent_user, survey_repo):
         """데이터가 CSV 파일에 올바르게 저장되고 조회되는지 테스트합니다.
 
         Args:
@@ -219,10 +226,13 @@ class TestDataPersistenceScenarios:
                     break
             assert found
 
+        session_id, time_spent_data = create_session_and_time_data(survey_repo, survey_id)
         success, error = survey_commands.submit_response(
             sample_respondent_user,
             survey_id,
-            {q1_id: "5"}
+            {q1_id: "5"},
+            session_id,
+            time_spent_data
         )
         assert success
 

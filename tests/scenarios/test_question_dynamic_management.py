@@ -8,13 +8,14 @@ CRUD 커버리지: Question(CRUD) 집중
 import pytest
 from domain.value_objects.role import Role
 from domain.value_objects.types import QuestionType
+from tests.conftest import create_session_and_time_data
 
 
 class TestQuestionDynamicManagement:
     """설문 진행 중 질문 동적 관리 테스트"""
 
     def test_question_text_and_options_modification(
-        self, auth_service, survey_service, response_service
+        self, auth_service, survey_service, response_service, survey_repo
     ):
         """질문 내용 및 옵션 수정
 
@@ -97,10 +98,13 @@ class TestQuestionDynamicManagement:
         ]
 
         for user, (rating, choice, text) in zip(users, initial_responses_data):
+            session_id, time_spent_data = create_session_and_time_data(survey_repo, survey_id)
             submit = response_service.submit_response(
                 user,
                 survey_id,
-                {q1_id: rating, q2_id: choice, q3_id: text}
+                {q1_id: rating, q2_id: choice, q3_id: text},
+                session_id,
+                time_spent_data
             )
             assert submit.is_success()
 
@@ -154,10 +158,13 @@ class TestQuestionDynamicManagement:
         ]
 
         for user, (rating, choice, text) in zip(new_users, new_responses_data):
+            session_id1, time_spent_data1 = create_session_and_time_data(survey_repo, survey_id)
             submit = response_service.submit_response(
                 user,
                 survey_id,
-                {q1_id: rating, q2_id: choice, q3_id: text}
+                {q1_id: rating, q2_id: choice, q3_id: text},
+                session_id1,
+                time_spent_data1
             )
             assert submit.is_success()
 
@@ -170,7 +177,7 @@ class TestQuestionDynamicManagement:
         assert "기능E" in final_data[q2_id]["distribution"]
 
     def test_question_wording_improvement(
-        self, auth_service, survey_service, response_service
+        self, auth_service, survey_service, response_service, survey_repo
     ):
         """질문 문구 개선 프로세스
 
@@ -243,10 +250,13 @@ class TestQuestionDynamicManagement:
         ]
 
         for user, (rating, text) in zip(early_employees, early_responses):
+            session_id2, time_spent_data2 = create_session_and_time_data(survey_repo, survey_id)
             submit = response_service.submit_response(
                 user,
                 survey_id,
-                {q1_id: rating, q2_id: text}
+                {q1_id: rating, q2_id: text},
+                session_id2,
+                time_spent_data2
             )
             assert submit.is_success()
 
@@ -298,10 +308,13 @@ class TestQuestionDynamicManagement:
         ]
 
         for user, (rating, text) in zip(late_employees, late_responses):
+            session_id3, time_spent_data3 = create_session_and_time_data(survey_repo, survey_id)
             submit = response_service.submit_response(
                 user,
                 survey_id,
-                {q1_id: rating, q2_id: text}
+                {q1_id: rating, q2_id: text},
+                session_id3,
+                time_spent_data3
             )
             assert submit.is_success()
 
@@ -313,7 +326,7 @@ class TestQuestionDynamicManagement:
         assert final_data[q1_id]["average"] == expected_avg
 
     def test_question_deletion_orphan_handling(
-        self, auth_service, survey_service, response_service, response_repo
+        self, auth_service, survey_service, response_service, response_repo, survey_repo
     ):
         """질문 삭제 후 응답 처리 (orphan response)
 
@@ -408,10 +421,13 @@ class TestQuestionDynamicManagement:
         ]
 
         for respondent, (q1_ans, q2_ans, q3_ans, q4_ans) in zip(respondents, responses_data):
+            session_id4, time_spent_data4 = create_session_and_time_data(survey_repo, survey_id)
             submit = response_service.submit_response(
                 respondent,
                 survey_id,
-                {q1_id: q1_ans, q2_id: q2_ans, q3_id: q3_ans, q4_id: q4_ans}
+                {q1_id: q1_ans, q2_id: q2_ans, q3_id: q3_ans, q4_id: q4_ans},
+                session_id4,
+                time_spent_data4
             )
             assert submit.is_success()
 

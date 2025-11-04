@@ -1,6 +1,7 @@
 import pytest
 from domain.value_objects.role import Role
 from domain.value_objects.types import QuestionType
+from tests.conftest import create_session_and_time_data
 
 
 class TestRBACIntegration:
@@ -170,8 +171,9 @@ class TestRBACIntegration:
         )
         question_id = question_result.value
 
+        session_id, time_spent_data = create_session_and_time_data(survey_repo, survey_id)
         submit_result = response_service.submit_response(
-            respondent_user, survey_id, {question_id: "원래 답변"}
+            respondent_user, survey_id, {question_id: "원래 답변"}, session_id, time_spent_data
         )
         assert submit_result.is_success()
 
@@ -184,7 +186,7 @@ class TestRBACIntegration:
         assert update_result.is_success()
 
     def test_respondent_cannot_modify_others_response(
-        self, auth_service, survey_service, response_service
+        self, auth_service, survey_service, response_service, survey_repo
     ):
         """RESPONDENT는 다른 사용자의 응답 수정 불가
 
@@ -240,8 +242,9 @@ class TestRBACIntegration:
         )
         question_id = question_result.value
 
+        session_id, time_spent_data = create_session_and_time_data(survey_repo, survey_id)
         submit_result = response_service.submit_response(
-            resp_a_user, survey_id, {question_id: "A의 답변"}
+            resp_a_user, survey_id, {question_id: "A의 답변"}, session_id, time_spent_data
         )
         assert submit_result.is_success()
 
@@ -255,7 +258,7 @@ class TestRBACIntegration:
         assert "권한이 없습니다" in update_result.error
 
     def test_survey_owner_can_view_results(
-        self, auth_service, survey_service, response_service
+        self, auth_service, survey_service, response_service, survey_repo
     ):
         """설문 소유자는 결과 조회 가능
 
@@ -299,8 +302,9 @@ class TestRBACIntegration:
         )
         question_id = question_result.value
 
+        session_id, time_spent_data = create_session_and_time_data(survey_repo, survey_id)
         submit_result = response_service.submit_response(
-            respondent_user, survey_id, {question_id: "답변"}
+            respondent_user, survey_id, {question_id: "답변"}, session_id, time_spent_data
         )
         assert submit_result.is_success()
 

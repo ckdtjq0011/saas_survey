@@ -7,13 +7,14 @@
 import pytest
 from domain.value_objects.role import Role
 from domain.value_objects.types import QuestionType
+from tests.conftest import create_session_and_time_data
 
 
 class TestDataConsistencyStress:
     """데이터 일관성 스트레스 엔드투엔드 테스트"""
 
     def test_delete_question_with_responses(
-        self, auth_service, survey_service, response_service, response_repo
+        self, auth_service, survey_service, response_service, response_repo, survey_repo
     ):
         """응답이 있는 질문 삭제 시 데이터 일관성
 
@@ -56,6 +57,7 @@ class TestDataConsistencyStress:
         )
         q3_id = q3.value
 
+        session_id, time_spent_data = create_session_and_time_data(survey_repo, survey_id)
         submit_result = response_service.submit_response(
             manager_user,
             survey_id,
@@ -63,7 +65,9 @@ class TestDataConsistencyStress:
                 q1_id: "답변1",
                 q2_id: "5",
                 q3_id: "답변3"
-            }
+            },
+            session_id,
+            time_spent_data
         )
         assert submit_result.is_success()
 
@@ -79,7 +83,7 @@ class TestDataConsistencyStress:
         assert len(responses_q3) > 0
 
     def test_concurrent_response_submissions(
-        self, auth_service, survey_service, response_service, response_repo
+        self, auth_service, survey_service, response_service, response_repo, survey_repo
     ):
         """동시 다중 응답 제출 시 데이터 일관성
 
@@ -129,8 +133,9 @@ class TestDataConsistencyStress:
         ratings = ["1", "2", "3", "4", "5", "5", "4", "3", "2", "1"]
 
         for user, rating in zip(users, ratings):
+            session_id1, time_spent_data1 = create_session_and_time_data(survey_repo, survey_id)
             submit_result = response_service.submit_response(
-                user, survey_id, {q_id: rating}
+                user, survey_id, {q_id: rating}, session_id1, time_spent_data1
             )
             assert submit_result.is_success()
 
@@ -145,7 +150,7 @@ class TestDataConsistencyStress:
         assert data[q_id]["average"] == expected_avg
 
     def test_survey_deletion_data_cleanup(
-        self, auth_service, survey_service, response_service, survey_repo, response_repo
+        self, auth_service, survey_service, response_service, response_repo, survey_repo
     ):
         """설문 삭제 시 모든 연관 데이터 정리
 
@@ -194,7 +199,8 @@ class TestDataConsistencyStress:
             user, _ = user_validate.value
 
             answers = {q_id: f"답변{i}" for q_id in questions}
-            submit_result = response_service.submit_response(user, survey_id, answers)
+            session_id2, time_spent_data2 = create_session_and_time_data(survey_repo, survey_id)
+            submit_result = response_service.submit_response(user, survey_id, answers, session_id2, time_spent_data2)
             assert submit_result.is_success()
 
         responses_before = response_repo.find_by_survey_id(survey_id)

@@ -10,9 +10,12 @@ from infrastructure.persistence.csv_user_repository import CsvUserRepository
 from infrastructure.persistence.csv_session_repository import CsvSessionRepository
 from infrastructure.persistence.csv_survey_repository import CsvSurveyRepository
 from infrastructure.persistence.csv_response_repository import CsvResponseRepository
+from infrastructure.persistence.csv_survey_session_repository import CsvSurveySessionRepository
+from infrastructure.persistence.csv_response_history_repository import CsvResponseHistoryRepository
 from application.auth_service import AuthService
 from application.survey_service import SurveyService
 from application.response_service import ResponseService
+from application.survey_session_service import SurveySessionService
 from domain.entities.tenant import Tenant
 from domain.entities.user import User
 from domain.entities.session import Session
@@ -129,6 +132,32 @@ def response_repo(temp_data_dir):
 
 
 @pytest.fixture(scope="function")
+def response_history_repo(temp_data_dir):
+    """테스트용 Response History Repository를 생성합니다.
+
+    각 테스트마다 독립적인 Repository 인스턴스를 생성합니다.
+    """
+    repo = CsvResponseHistoryRepository(temp_data_dir)
+    yield repo
+    csv_file = temp_data_dir / "response_histories.csv"
+    if csv_file.exists():
+        csv_file.unlink(missing_ok=True)
+
+
+@pytest.fixture(scope="function")
+def survey_session_repo(temp_data_dir):
+    """테스트용 Survey Session Repository를 생성합니다.
+
+    각 테스트마다 독립적인 Repository 인스턴스를 생성합니다.
+    """
+    repo = CsvSurveySessionRepository(temp_data_dir)
+    yield repo
+    csv_file = temp_data_dir / "survey_sessions.csv"
+    if csv_file.exists():
+        csv_file.unlink(missing_ok=True)
+
+
+@pytest.fixture(scope="function")
 def auth_service(tenant_repo, user_repo, session_repo):
     """테스트용 Auth Service를 생성합니다.
 
@@ -147,12 +176,21 @@ def survey_service(survey_repo):
 
 
 @pytest.fixture(scope="function")
-def response_service(response_repo, survey_repo):
+def response_service(response_repo, response_history_repo, survey_repo):
     """테스트용 Response Service를 생성합니다.
 
     각 테스트마다 독립적인 Service 인스턴스를 생성합니다.
     """
-    return ResponseService(response_repo, survey_repo)
+    return ResponseService(response_repo, response_history_repo, survey_repo)
+
+
+@pytest.fixture(scope="function")
+def survey_session_service(survey_session_repo, survey_repo):
+    """테스트용 Survey Session Service를 생성합니다.
+
+    각 테스트마다 독립적인 Service 인스턴스를 생성합니다.
+    """
+    return SurveySessionService(survey_session_repo, survey_repo)
 
 
 @pytest.fixture(scope="function")
@@ -311,7 +349,13 @@ def sample_questions(survey_repo, sample_survey):
 
 
 @pytest.fixture(scope="function")
-def sample_response(response_repo, sample_survey, sample_questions, sample_respondent_user):
+def sample_session_id():
+    """샘플 세션 ID를 생성합니다."""
+    return str(uuid.uuid4())
+
+
+@pytest.fixture(scope="function")
+def sample_response(response_repo, sample_survey, sample_questions, sample_respondent_user, sample_session_id):
     """샘플 응답을 생성합니다.
 
     각 테스트마다 새로운 응답을 생성합니다.
@@ -322,7 +366,27 @@ def sample_response(response_repo, sample_survey, sample_questions, sample_respo
         question_id=sample_questions[0].id,
         answer="좋은 서비스입니다",
         respondent_id=sample_respondent_user.id,
-        created_at=datetime.now(),
+        answered_at=datetime.now(),
+        session_id=sample_session_id,
+        time_spent_seconds=10,
     )
     response_repo.save(response)
     return response
+
+
+def create_session_and_time_data(survey_repo, survey_id):
+    """테스트용 세션 ID와 time_spent_data를 생성하는 helper 함수입니다.
+
+    Args:
+        survey_repo: Survey Repository
+        survey_id: 설문 ID
+
+    Returns:
+        (session_id, time_spent_data) 튜플
+    """
+    session_id = str(uuid.uuid4())
+
+    questions = survey_repo.find_questions_by_survey_id(survey_id)
+    time_spent_data = {q.id: 5 for q in questions}
+
+    return session_id, time_spent_data

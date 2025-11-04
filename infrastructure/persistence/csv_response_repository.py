@@ -29,7 +29,17 @@ class CsvResponseRepository(ResponseRepository):
         if not self.responses_file.exists():
             with open(self.responses_file, "w", newline="", encoding="utf-8-sig") as f:
                 writer = csv.DictWriter(
-                    f, fieldnames=["id", "survey_id", "question_id", "answer", "respondent_id", "created_at"]
+                    f,
+                    fieldnames=[
+                        "id",
+                        "survey_id",
+                        "question_id",
+                        "answer",
+                        "respondent_id",
+                        "answered_at",
+                        "session_id",
+                        "time_spent_seconds",
+                    ],
                 )
                 writer.writeheader()
 
@@ -41,7 +51,17 @@ class CsvResponseRepository(ResponseRepository):
         """
         with open(self.responses_file, "a", newline="", encoding="utf-8-sig") as f:
             writer = csv.DictWriter(
-                f, fieldnames=["id", "survey_id", "question_id", "answer", "respondent_id", "created_at"]
+                f,
+                fieldnames=[
+                    "id",
+                    "survey_id",
+                    "question_id",
+                    "answer",
+                    "respondent_id",
+                    "answered_at",
+                    "session_id",
+                    "time_spent_seconds",
+                ],
             )
             writer.writerow(response.to_dict())
             f.flush()
@@ -132,7 +152,16 @@ class CsvResponseRepository(ResponseRepository):
             raise ValueError(f"응답을 찾을 수 없습니다: {response_id}")
 
         with open(self.responses_file, "w", newline="", encoding="utf-8-sig") as f:
-            fieldnames = ["id", "survey_id", "question_id", "answer", "respondent_id", "created_at"]
+            fieldnames = [
+                "id",
+                "survey_id",
+                "question_id",
+                "answer",
+                "respondent_id",
+                "answered_at",
+                "session_id",
+                "time_spent_seconds",
+            ]
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
             writer.writerows(rows)
@@ -166,7 +195,16 @@ class CsvResponseRepository(ResponseRepository):
             raise ValueError(f"응답을 찾을 수 없습니다: {response_id}")
 
         with open(self.responses_file, "w", newline="", encoding="utf-8-sig") as f:
-            fieldnames = ["id", "survey_id", "question_id", "answer", "respondent_id", "created_at"]
+            fieldnames = [
+                "id",
+                "survey_id",
+                "question_id",
+                "answer",
+                "respondent_id",
+                "answered_at",
+                "session_id",
+                "time_spent_seconds",
+            ]
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
             writer.writerows(rows)
@@ -191,7 +229,16 @@ class CsvResponseRepository(ResponseRepository):
                     rows.append(row)
 
         with open(self.responses_file, "w", newline="", encoding="utf-8-sig") as f:
-            fieldnames = ["id", "survey_id", "question_id", "answer", "respondent_id", "created_at"]
+            fieldnames = [
+                "id",
+                "survey_id",
+                "question_id",
+                "answer",
+                "respondent_id",
+                "answered_at",
+                "session_id",
+                "time_spent_seconds",
+            ]
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
             writer.writerows(rows)

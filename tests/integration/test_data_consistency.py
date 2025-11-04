@@ -1,6 +1,7 @@
 import pytest
 from domain.value_objects.role import Role
 from domain.value_objects.types import QuestionType
+from tests.conftest import create_session_and_time_data
 
 
 class TestDataConsistency:
@@ -39,8 +40,9 @@ class TestDataConsistency:
         )
         question_id = question_result.value
 
+        session_id, time_spent_data = create_session_and_time_data(survey_repo, survey_id)
         submit_result = response_service.submit_response(
-            manager_user, survey_id, {question_id: "답변"}
+            manager_user, survey_id, {question_id: "답변"}, session_id, time_spent_data
         )
         assert submit_result.is_success()
 
@@ -99,7 +101,7 @@ class TestDataConsistency:
         assert validate_after.is_failure()
 
     def test_update_question_preserves_existing_responses(
-        self, auth_service, survey_service, response_service, response_repo
+        self, auth_service, survey_service, response_service, response_repo, survey_repo
     ):
         """질문 수정 시 기존 응답 보존
 
@@ -131,8 +133,9 @@ class TestDataConsistency:
         )
         question_id = question_result.value
 
+        session_id, time_spent_data = create_session_and_time_data(survey_repo, survey_id)
         submit_result = response_service.submit_response(
-            manager_user, survey_id, {question_id: "내 답변"}
+            manager_user, survey_id, {question_id: "내 답변"}, session_id, time_spent_data
         )
         assert submit_result.is_success()
 
@@ -180,7 +183,7 @@ class TestDataConsistency:
         assert tenant_after is None
 
     def test_multiple_responses_from_same_user(
-        self, auth_service, survey_service, response_service, response_repo
+        self, auth_service, survey_service, response_service, response_repo, survey_repo
     ):
         """동일 사용자의 중복 응답 처리
 
@@ -211,13 +214,15 @@ class TestDataConsistency:
         )
         question_id = question_result.value
 
+        session_id1, time_spent_data1 = create_session_and_time_data(survey_repo, survey_id)
         submit1 = response_service.submit_response(
-            manager_user, survey_id, {question_id: "첫 번째 답변"}
+            manager_user, survey_id, {question_id: "첫 번째 답변"}, session_id1, time_spent_data1
         )
         assert submit1.is_success()
 
+        session_id2, time_spent_data2 = create_session_and_time_data(survey_repo, survey_id)
         submit2 = response_service.submit_response(
-            manager_user, survey_id, {question_id: "두 번째 답변"}
+            manager_user, survey_id, {question_id: "두 번째 답변"}, session_id2, time_spent_data2
         )
         assert submit2.is_success()
 
@@ -225,7 +230,7 @@ class TestDataConsistency:
         assert len(responses) == 2
 
     def test_survey_results_reflect_latest_data(
-        self, auth_service, survey_service, response_service
+        self, auth_service, survey_service, response_service, survey_repo
     ):
         """설문 결과가 최신 데이터 반영
 
@@ -257,8 +262,9 @@ class TestDataConsistency:
         )
         question_id = question_result.value
 
+        session_id1, time_spent_data1 = create_session_and_time_data(survey_repo, survey_id)
         submit1 = response_service.submit_response(
-            manager_user, survey_id, {question_id: "5"}
+            manager_user, survey_id, {question_id: "5"}, session_id1, time_spent_data1
         )
         assert submit1.is_success()
 
@@ -268,8 +274,9 @@ class TestDataConsistency:
         assert data1[question_id]["count"] == 1
         assert data1[question_id]["average"] == 5.0
 
+        session_id2, time_spent_data2 = create_session_and_time_data(survey_repo, survey_id)
         submit2 = response_service.submit_response(
-            manager_user, survey_id, {question_id: "3"}
+            manager_user, survey_id, {question_id: "3"}, session_id2, time_spent_data2
         )
         assert submit2.is_success()
 
@@ -320,13 +327,15 @@ class TestDataConsistency:
         )
         q2_id = q2_result.value
 
+        session_id1, time_spent_data1 = create_session_and_time_data(survey_repo, survey1_id)
         submit1 = response_service.submit_response(
-            manager_user, survey1_id, {q1_id: "5"}
+            manager_user, survey1_id, {q1_id: "5"}, session_id1, time_spent_data1
         )
         assert submit1.is_success()
 
+        session_id2, time_spent_data2 = create_session_and_time_data(survey_repo, survey2_id)
         submit2 = response_service.submit_response(
-            manager_user, survey2_id, {q2_id: "3"}
+            manager_user, survey2_id, {q2_id: "3"}, session_id2, time_spent_data2
         )
         assert submit2.is_success()
 

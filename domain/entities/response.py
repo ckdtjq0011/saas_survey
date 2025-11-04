@@ -12,14 +12,18 @@ class Response:
         question_id: 질문 식별자
         answer: 답변 내용
         respondent_id: 응답자 식별자
-        created_at: 응답 일시
+        answered_at: 답변 작성 일시
+        session_id: 세션 식별자 (SurveySession 연결)
+        time_spent_seconds: 질문당 소요 시간 (초)
     """
     id: str
     survey_id: str
     question_id: str
     answer: str
     respondent_id: str
-    created_at: datetime
+    answered_at: datetime
+    session_id: str
+    time_spent_seconds: int
 
     def __post_init__(self) -> None:
         """생성 후 불변 조건을 검증합니다.
@@ -37,6 +41,10 @@ class Response:
             raise ValueError("답변 내용은 필수입니다")
         if not self.respondent_id:
             raise ValueError("응답자 ID는 필수입니다")
+        if not self.session_id:
+            raise ValueError("세션 ID는 필수입니다")
+        if self.time_spent_seconds < 0:
+            raise ValueError("소요 시간은 음수가 될 수 없습니다")
 
     def to_dict(self) -> dict[str, str]:
         """엔티티를 딕셔너리로 변환합니다.
@@ -50,7 +58,9 @@ class Response:
             "question_id": self.question_id,
             "answer": self.answer,
             "respondent_id": self.respondent_id,
-            "created_at": self.created_at.isoformat(),
+            "answered_at": self.answered_at.isoformat(),
+            "session_id": self.session_id,
+            "time_spent_seconds": str(self.time_spent_seconds),
         }
 
     @classmethod
@@ -69,5 +79,7 @@ class Response:
             question_id=data["question_id"],
             answer=data["answer"],
             respondent_id=data["respondent_id"],
-            created_at=datetime.fromisoformat(data["created_at"]),
+            answered_at=datetime.fromisoformat(data["answered_at"]),
+            session_id=data["session_id"],
+            time_spent_seconds=int(data["time_spent_seconds"]),
         )

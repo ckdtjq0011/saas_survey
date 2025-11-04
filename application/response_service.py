@@ -2,10 +2,12 @@ import uuid
 from datetime import datetime
 from collections import Counter
 from domain.entities.response import Response
+from domain.entities.response_history import ResponseHistory
 from domain.entities.user import User
 from domain.value_objects.result import Success, Failure, Result
 from domain.value_objects.types import QuestionType
 from domain.repositories.response_repository import ResponseRepository
+from domain.repositories.response_history_repository import ResponseHistoryRepository
 from domain.repositories.survey_repository import SurveyRepository
 
 
@@ -14,26 +16,43 @@ class ResponseService:
 
     Attributes:
         response_repository: 응답 저장소
+        response_history_repository: 응답 수정 이력 저장소
         survey_repository: 설문 저장소
     """
 
-    def __init__(self, response_repository: ResponseRepository, survey_repository: SurveyRepository):
+    def __init__(
+        self,
+        response_repository: ResponseRepository,
+        response_history_repository: ResponseHistoryRepository,
+        survey_repository: SurveyRepository,
+    ):
         """서비스를 초기화합니다.
 
         Args:
             response_repository: 응답 저장소 구현체
+            response_history_repository: 응답 수정 이력 저장소 구현체
             survey_repository: 설문 저장소 구현체
         """
         self.response_repository = response_repository
+        self.response_history_repository = response_history_repository
         self.survey_repository = survey_repository
 
-    def submit_response(self, user: User, survey_id: str, answers: dict[str, str]) -> Result[None, str]:
+    def submit_response(
+        self,
+        user: User,
+        survey_id: str,
+        answers: dict[str, str],
+        session_id: str,
+        time_spent_data: dict[str, int],
+    ) -> Result[None, str]:
         """설문 응답을 제출합니다.
 
         Args:
             user: 사용자 엔티티
             survey_id: 설문 식별자
             answers: 질문 ID와 답변의 딕셔너리
+            session_id: 세션 ID
+            time_spent_data: 질문 ID와 소요 시간(초)의 딕셔너리
 
         Returns:
             Success[None] 또는 Failure[에러 메시지]
@@ -56,6 +75,8 @@ class ResponseService:
             if validation_result.is_failure():
                 return validation_result
 
+            time_spent_seconds = time_spent_data.get(question_id, 0)
+
             response_id = str(uuid.uuid4())
             response = Response(
                 id=response_id,
@@ -63,7 +84,9 @@ class ResponseService:
                 question_id=question_id,
                 answer=answer,
                 respondent_id=user.id,
-                created_at=datetime.now(),
+                answered_at=datetime.now(),
+                session_id=session_id,
+                time_spent_seconds=time_spent_seconds,
             )
             self.response_repository.save(response)
 
@@ -189,6 +212,17 @@ class ResponseService:
         if target_response.respondent_id != user.id and not user.role.can_manage_survey(survey.owner_id == user.id):
             return Failure("응답 수정 권한이 없습니다")
 
+        history_id = str(uuid.uuid4())
+        history = ResponseHistory(
+            id=history_id,
+            response_id=response_id,
+            old_answer=target_response.answer,
+            new_answer=answer,
+            updated_at=datetime.now(),
+            updated_by=user.id,
+        )
+        self.response_history_repository.save(history)
+
         self.response_repository.update_response(response_id, answer)
         return Success(None)
 
@@ -229,3 +263,41 @@ class ResponseService:
 
         self.response_repository.delete_response(response_id)
         return Success(None)
+
+    def get_response_history(self, user: User, response_id: str) -> Result[list[ResponseHistory], str]:
+        """응답 수정 이력을 조회합니다.
+
+        Args:
+            user: 사용자 엔티티
+            response_id: 응답 식별자
+
+        Returns:
+            Success[이력 목록] 또는 Failure[에러 메시지]
+        """
+        all_responses = []
+        all_surveys = self.survey_repository.find_all_surveys()
+        for survey in all_surveys:
+            responses = self.response_repository.find_by_survey_id(survey.id)
+            all_responses.extend(responses)
+
+        target_response = None
+        for resp in all_responses:
+            if resp.id == response_id:
+                target_response = resp
+                break
+
+        if not target_response:
+            return Failure(f"응답을 찾을 수 없습니다: {response_id}")
+
+        survey = self.survey_repository.find_survey_by_id(target_response.survey_id)
+        if not survey:
+            return Failure("응답에 해당하는 설문을 찾을 수 없습니다")
+
+        if survey.tenant_id != user.tenant_id:
+            return Failure("다른 테넌트의 응답에 접근할 수 없습니다")
+
+        if target_response.respondent_id != user.id and not user.role.can_manage_survey(survey.owner_id == user.id):
+            return Failure("이력 조회 권한이 없습니다")
+
+        histories = self.response_history_repository.find_by_response_id(response_id)
+        return Success(histories)
