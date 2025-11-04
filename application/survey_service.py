@@ -51,7 +51,13 @@ class SurveyService:
         return Success(survey_id)
 
     def add_question(
-        self, user: User, survey_id: str, text: str, question_type: QuestionType, options: list[str] | None = None
+        self,
+        user: User,
+        survey_id: str,
+        text: str,
+        question_type: QuestionType,
+        options: list[str] | None = None,
+        category_id: str | None = None
     ) -> Result[str, str]:
         """설문에 질문을 추가합니다.
 
@@ -61,6 +67,7 @@ class SurveyService:
             text: 질문 내용
             question_type: 질문 유형
             options: 객관식 선택지
+            category_id: 범주 식별자
 
         Returns:
             Success[질문 ID] 또는 Failure[에러 메시지]
@@ -83,6 +90,7 @@ class SurveyService:
             text=text,
             question_type=question_type,
             options=tuple(options) if options else None,
+            category_id=category_id,
         )
         self.survey_repository.save_question(question)
         return Success(question_id)

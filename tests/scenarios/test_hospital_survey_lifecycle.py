@@ -155,7 +155,7 @@ class TestHospitalSurveyLifecycle:
             survey_id,
             "재방문 의향이 있으십니까?",
             QuestionType.MULTIPLE_CHOICE,
-            ["예", "아니오", "잘 모르겠음"]
+            ["y", "n", "?"]
         )
         assert q4.is_success()
         q4_id = q4.value

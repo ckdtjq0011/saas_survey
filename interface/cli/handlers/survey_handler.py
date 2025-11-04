@@ -61,8 +61,16 @@ class SurveyHandler(BaseHandler):
             if question_type == QuestionType.MULTIPLE_CHOICE.value:
                 options = self._get_multiple_choice_options()
 
+            category_id = None
+            category_choice = self.ui.get_choice(
+                "범주를 설정하시겠습니까?",
+                choices=["y", "n"],
+            )
+            if category_choice == "y":
+                category_id = self._select_category(user)
+
             success, result = self.commands.add_question(
-                user, survey_id, text, question_type, options
+                user, survey_id, text, question_type, options, category_id
             )
 
             if success:
@@ -401,3 +409,42 @@ class SurveyHandler(BaseHandler):
             idx += 1
 
         return options
+
+    def _select_category(self, user: User) -> str | None:
+        """범주를 선택합니다.
+
+        Args:
+            user: 현재 로그인한 사용자
+
+        Returns:
+            선택된 범주 ID, 취소 시 None
+        """
+        success, result = self.commands.list_all_categories(user)
+
+        if not success:
+            self.ui.print_error(f"범주 목록 조회 실패: {result}")
+            return None
+
+        categories = result
+
+        if not categories:
+            self.ui.print_info("범주가 없습니다")
+            return None
+
+        choices = []
+        for cat in categories:
+            if cat.is_top_level():
+                choices.append(f"[대범주] {cat.name}")
+            else:
+                choices.append(f"  [하위범주] {cat.name}")
+
+        selected_choice = self.ui.get_choice("범주 선택", choices=choices + ["선택 안 함"])
+
+        if selected_choice == "선택 안 함":
+            return None
+
+        for cat in categories:
+            if f"[대범주] {cat.name}" == selected_choice or f"  [하위범주] {cat.name}" == selected_choice:
+                return cat.id
+
+        return None

@@ -198,6 +198,33 @@ class TestConsoleUIInput:
 
         assert result == "option1"
 
+    def test_get_choice_case_insensitive_uppercase(self, console_ui, input_stream):
+        """선택 입력 - 대문자 입력"""
+        input_stream.write("Y\n")
+        input_stream.seek(0)
+
+        result = console_ui.get_choice("선택하세요", ["y", "n"])
+
+        assert result == "y"
+
+    def test_get_choice_case_insensitive_lowercase(self, console_ui, input_stream):
+        """선택 입력 - 소문자 입력"""
+        input_stream.write("n\n")
+        input_stream.seek(0)
+
+        result = console_ui.get_choice("선택하세요", ["y", "n"])
+
+        assert result == "n"
+
+    def test_get_choice_case_insensitive_mixed(self, console_ui, input_stream):
+        """선택 입력 - 대소문자 혼합"""
+        input_stream.write("N\n")
+        input_stream.seek(0)
+
+        result = console_ui.get_choice("선택하세요", ["y", "n"])
+
+        assert result == "n"
+
     def test_confirm_yes(self, console_ui, input_stream):
         """확인 입력 - yes"""
         input_stream.write("y\n")

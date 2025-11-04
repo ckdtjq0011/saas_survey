@@ -102,13 +102,13 @@ class TestSurveyHandlerAddQuestion:
         ]
         mock_ui.get_int_input.return_value = 1
         mock_ui.get_validated_input.return_value = "질문 내용"
-        mock_ui.get_choice.return_value = QuestionType.TEXT.value
+        mock_ui.get_choice.side_effect = [QuestionType.TEXT.value, "n"]
         mock_commands.add_question.return_value = (True, "question123")
 
         survey_handler.add_question_flow(sample_user)
 
         mock_commands.add_question.assert_called_once_with(
-            sample_user, "survey123", "질문 내용", QuestionType.TEXT.value, None
+            sample_user, "survey123", "질문 내용", QuestionType.TEXT.value, None, None
         )
         mock_ui.print_success.assert_called_once()
 

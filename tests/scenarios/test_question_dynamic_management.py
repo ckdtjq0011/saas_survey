@@ -356,7 +356,7 @@ class TestQuestionDynamicManagement:
             survey_id,
             "광고를 보셨습니까?",
             QuestionType.MULTIPLE_CHOICE,
-            ["예", "아니오"]
+            ["y", "n"]
         )
         q1_id = q1.value
 
@@ -400,11 +400,11 @@ class TestQuestionDynamicManagement:
             respondents.append(user)
 
         responses_data = [
-            ("예", "5", "김OO", "있음"),
-            ("예", "4", "잘 모름", "고민중"),
-            ("아니오", "1", "모름", "없음"),
-            ("예", "5", "김OO", "있음"),
-            ("예", "3", "잘 모름", "고민중"),
+            ("y", "5", "김OO", "있음"),
+            ("y", "4", "잘 모름", "고민중"),
+            ("n", "1", "모름", "없음"),
+            ("y", "5", "김OO", "있음"),
+            ("y", "3", "잘 모름", "고민중"),
         ]
 
         for respondent, (q1_ans, q2_ans, q3_ans, q4_ans) in zip(respondents, responses_data):

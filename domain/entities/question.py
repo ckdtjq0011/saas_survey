@@ -12,12 +12,14 @@ class Question:
         text: 질문 내용
         question_type: 질문 유형
         options: 객관식 선택지 (객관식인 경우)
+        category_id: 소속 범주 식별자 (선택 사항)
     """
     id: str
     survey_id: str
     text: str
     question_type: QuestionType
     options: tuple[str, ...] | None = None
+    category_id: str | None = None
 
     def __post_init__(self) -> None:
         """생성 후 불변 조건을 검증합니다.
@@ -49,6 +51,7 @@ class Question:
             "text": self.text,
             "question_type": self.question_type.value,
             "options": OPTIONS_DELIMITER.join(self.options) if self.options else "",
+            "category_id": self.category_id if self.category_id else "",
         }
 
     @classmethod
@@ -76,10 +79,14 @@ class Question:
         else:
             options = None
 
+        # Backward compatibility: category_id가 없는 기존 데이터 지원
+        category_id = data.get("category_id", "")
+
         return cls(
             id=data["id"],
             survey_id=data["survey_id"],
             text=data["text"],
             question_type=QuestionType(data["question_type"]),
             options=options,
+            category_id=category_id if category_id else None,
         )

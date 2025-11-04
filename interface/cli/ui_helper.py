@@ -337,14 +337,20 @@ class ConsoleUI:
             선택된 값
         """
         if self.input_stream:
-            line = self.input_stream.readline()
-            return line.strip()
+            user_input = self.input_stream.readline().strip()
+        else:
+            user_input = Prompt.ask(
+                f"[bold]{prompt}[/bold]",
+                choices=choices,
+                console=self.console
+            )
 
-        return Prompt.ask(
-            f"[bold]{prompt}[/bold]",
-            choices=choices,
-            console=self.console
-        )
+        user_input_lower = user_input.lower()
+        for choice in choices:
+            if choice.lower() == user_input_lower:
+                return choice
+
+        return user_input
 
     def confirm(self, prompt: str, default: bool = False) -> bool:
         """확인을 요청합니다.

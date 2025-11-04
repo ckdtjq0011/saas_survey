@@ -40,7 +40,7 @@ class CsvSurveyRepository(SurveyRepository):
 
         if not self.questions_file.exists():
             with open(self.questions_file, "w", newline="", encoding="utf-8-sig") as f:
-                writer = csv.DictWriter(f, fieldnames=["id", "survey_id", "text", "question_type", "options"])
+                writer = csv.DictWriter(f, fieldnames=["id", "survey_id", "text", "question_type", "options", "category_id"])
                 writer.writeheader()
 
     def save_survey(self, survey: Survey) -> None:
@@ -61,7 +61,7 @@ class CsvSurveyRepository(SurveyRepository):
             question: 저장할 질문 엔티티
         """
         with open(self.questions_file, "a", newline="", encoding="utf-8-sig") as f:
-            writer = csv.DictWriter(f, fieldnames=["id", "survey_id", "text", "question_type", "options"])
+            writer = csv.DictWriter(f, fieldnames=["id", "survey_id", "text", "question_type", "options", "category_id"])
             writer.writerow(question.to_dict())
             f.flush()
 
@@ -255,7 +255,7 @@ class CsvSurveyRepository(SurveyRepository):
             raise ValueError(f"질문을 찾을 수 없습니다: {question_id}")
 
         with open(self.questions_file, "w", newline="", encoding="utf-8-sig") as f:
-            fieldnames = ["id", "survey_id", "text", "question_type", "options"]
+            fieldnames = ["id", "survey_id", "text", "question_type", "options", "category_id"]
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
             writer.writerows(rows)
@@ -307,7 +307,7 @@ class CsvSurveyRepository(SurveyRepository):
                     question_rows.append(row)
 
         with open(self.questions_file, "w", newline="", encoding="utf-8-sig") as f:
-            fieldnames = ["id", "survey_id", "text", "question_type", "options"]
+            fieldnames = ["id", "survey_id", "text", "question_type", "options", "category_id"]
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
             writer.writerows(question_rows)
@@ -343,7 +343,7 @@ class CsvSurveyRepository(SurveyRepository):
             raise ValueError(f"질문을 찾을 수 없습니다: {question_id}")
 
         with open(self.questions_file, "w", newline="", encoding="utf-8-sig") as f:
-            fieldnames = ["id", "survey_id", "text", "question_type", "options"]
+            fieldnames = ["id", "survey_id", "text", "question_type", "options", "category_id"]
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
             writer.writerows(rows)

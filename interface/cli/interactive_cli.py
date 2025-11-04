@@ -4,7 +4,7 @@ from domain.entities.user import User
 from interface.cli.commands import Commands
 from interface.cli.session_manager import SessionManager
 from interface.cli.ui_helper import ConsoleUI, print_header, print_info
-from interface.cli.handlers import AuthHandler, SurveyHandler, ResponseHandler
+from interface.cli.handlers import AuthHandler, SurveyHandler, ResponseHandler, CategoryHandler
 
 
 class InteractiveCLI:
@@ -36,6 +36,7 @@ class InteractiveCLI:
         self.auth_handler = AuthHandler(self.commands, self.ui)
         self.survey_handler = SurveyHandler(self.commands, self.ui)
         self.response_handler = ResponseHandler(self.commands, self.ui)
+        self.category_handler = CategoryHandler(self.commands, self.ui)
 
     def run(self) -> None:
         """CLI 애플리케이션을 실행합니다."""
@@ -136,6 +137,12 @@ class InteractiveCLI:
             menu_handlers[survey_mgmt_num] = self._show_survey_management_menu
             next_num += 1
 
+        if self.current_user.role.can_manage_users():
+            menu_table_items.append((str(next_num), "범주 관리", "질문 범주 관리 메뉴"))
+            category_mgmt_num = str(next_num)
+            menu_handlers[category_mgmt_num] = self._show_category_management_menu
+            next_num += 1
+
         menu_table_items.append((str(next_num), "응답 관리", "응답 수정 및 삭제"))
         menu_handlers[str(next_num)] = self._show_response_management_menu
         next_num += 1
@@ -214,6 +221,42 @@ class InteractiveCLI:
         menu_handlers = {
             "1": lambda: self.response_handler.update_response_flow(self.current_user),
             "2": lambda: self.response_handler.delete_response_flow(self.current_user),
+        }
+
+        self.ui.print_menu(menu_table_items)
+
+        choice = self.ui.get_input("선택")
+
+        if choice == "0":
+            return
+        elif choice in menu_handlers:
+            menu_handlers[choice]()
+        else:
+            self.ui.print_error("잘못된 선택입니다")
+            self.ui.pause()
+
+    def _show_category_management_menu(self) -> None:
+        """범주 관리 서브메뉴를 보여줍니다."""
+        if not self.current_user:
+            return
+
+        self.ui.print_section("범주 관리")
+
+        menu_table_items = [
+            ("1", "대범주 생성", "최상위 범주를 생성합니다"),
+            ("2", "소범주 생성", "대범주 하위에 소범주를 생성합니다"),
+            ("3", "범주 목록 조회", "범주 계층 구조를 확인합니다"),
+            ("4", "범주 수정", "기존 범주를 수정합니다"),
+            ("5", "범주 삭제", "범주를 삭제합니다"),
+            ("0", "뒤로 가기", "메인 메뉴로 돌아갑니다")
+        ]
+
+        menu_handlers = {
+            "1": lambda: self.category_handler.create_top_level_category_flow(self.current_user),
+            "2": lambda: self.category_handler.create_subcategory_flow(self.current_user),
+            "3": lambda: self.category_handler.list_categories_flow(self.current_user),
+            "4": lambda: self.category_handler.update_category_flow(self.current_user),
+            "5": lambda: self.category_handler.delete_category_flow(self.current_user),
         }
 
         self.ui.print_menu(menu_table_items)
