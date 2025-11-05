@@ -131,6 +131,10 @@ class InteractiveCLI:
             menu_handlers[str(next_num)] = lambda: self.response_handler.view_results_flow(self.current_user)
             next_num += 1
 
+            menu_table_items.append((str(next_num), "결과 CSV 내보내기", "설문 결과를 CSV 파일로 내보냅니다"))
+            menu_handlers[str(next_num)] = lambda: self.response_handler.export_results_flow(self.current_user)
+            next_num += 1
+
         if self.current_user.role.can_create_survey():
             menu_table_items.append((str(next_num), "설문 관리", "설문 및 질문 관리 메뉴"))
             survey_mgmt_num = str(next_num)

@@ -49,7 +49,7 @@ class Commands:
         category_repo = CsvCategoryRepository(data_dir)
 
         self.survey_service = SurveyService(survey_repo)
-        self.response_service = ResponseService(response_repo, response_history_repo, survey_repo)
+        self.response_service = ResponseService(response_repo, response_history_repo, survey_repo, category_repo)
         self.survey_session_service = SurveySessionService(survey_session_repo, survey_repo)
         self.auth_service = AuthService(tenant_repo, user_repo, session_repo)
         self.category_service = CategoryService(category_repo)
@@ -756,4 +756,28 @@ class Commands:
                 return False, result.error, None
         except Exception:
             logger.exception("응답 이력 조회 중 오류 발생")
+            raise
+
+    def export_results(self, user: User, survey_id: str) -> tuple[bool, str, tuple[str, str] | None]:
+        """설문 결과를 CSV 파일로 내보냅니다.
+
+        Args:
+            user: 사용자 엔티티
+            survey_id: 설문 ID
+
+        Returns:
+            (성공 여부, 에러 메시지, (raw_csv_path, summary_csv_path) 튜플)
+        """
+        try:
+            result = self.response_service.export_results_to_csv(user, survey_id)
+
+            if result.is_success():
+                raw_path, summary_path = result.value
+                logger.info("설문 결과 export 완료", extra={"survey_id": survey_id, "raw_path": raw_path, "summary_path": summary_path})
+                return True, "", (raw_path, summary_path)
+            else:
+                logger.warning(f"설문 결과 export 실패: {result.error}")
+                return False, result.error, None
+        except Exception:
+            logger.exception("설문 결과 export 중 오류 발생")
             raise

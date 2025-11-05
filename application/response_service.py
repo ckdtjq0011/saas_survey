@@ -1,6 +1,9 @@
 import uuid
+import csv
+import re
 from datetime import datetime
 from collections import Counter
+from pathlib import Path
 from domain.entities.response import Response
 from domain.entities.response_history import ResponseHistory
 from domain.entities.user import User
@@ -9,6 +12,7 @@ from domain.value_objects.types import QuestionType
 from domain.repositories.response_repository import ResponseRepository
 from domain.repositories.response_history_repository import ResponseHistoryRepository
 from domain.repositories.survey_repository import SurveyRepository
+from domain.repositories.category_repository import CategoryRepository
 
 
 class ResponseService:
@@ -25,6 +29,7 @@ class ResponseService:
         response_repository: ResponseRepository,
         response_history_repository: ResponseHistoryRepository,
         survey_repository: SurveyRepository,
+        category_repository: CategoryRepository | None = None,
     ):
         """서비스를 초기화합니다.
 
@@ -32,10 +37,12 @@ class ResponseService:
             response_repository: 응답 저장소 구현체
             response_history_repository: 응답 수정 이력 저장소 구현체
             survey_repository: 설문 저장소 구현체
+            category_repository: 범주 저장소 구현체 (선택적)
         """
         self.response_repository = response_repository
         self.response_history_repository = response_history_repository
         self.survey_repository = survey_repository
+        self.category_repository = category_repository
 
     def submit_response(
         self,
@@ -301,3 +308,181 @@ class ResponseService:
 
         histories = self.response_history_repository.find_by_response_id(response_id)
         return Success(histories)
+
+    def export_results_to_csv(
+        self,
+        user: User,
+        survey_id: str,
+        export_dir: Path | None = None
+    ) -> Result[tuple[str, str], str]:
+        """설문 결과를 CSV 파일로 내보냅니다.
+
+        Raw Data와 Summary 두 개의 CSV 파일을 생성합니다.
+
+        Args:
+            user: 사용자 엔티티
+            survey_id: 설문 식별자
+            export_dir: CSV 파일을 저장할 디렉토리 (None이면 기본 exports 폴더)
+
+        Returns:
+            Success[(raw_csv_path, summary_csv_path)] 또는 Failure[에러 메시지]
+        """
+        survey = self.survey_repository.find_survey_by_id(survey_id)
+        if not survey:
+            return Failure(f"설문을 찾을 수 없습니다: {survey_id}")
+
+        if survey.tenant_id != user.tenant_id:
+            return Failure("다른 테넌트의 설문에 접근할 수 없습니다")
+
+        is_owner = survey.owner_id == user.id
+        if not user.role.can_view_results(is_owner):
+            return Failure("결과 조회 권한이 없습니다")
+
+        if export_dir is None:
+            export_dir = Path("data") / "exports"
+
+        export_dir.mkdir(parents=True, exist_ok=True)
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        safe_title = re.sub(r'[^\w\s-]', '', survey.title).strip()[:50]
+        if not safe_title:
+            safe_title = "survey"
+
+        raw_filename = f"{safe_title}_raw_{timestamp}.csv"
+        summary_filename = f"{safe_title}_summary_{timestamp}.csv"
+        raw_path = export_dir / raw_filename
+        summary_path = export_dir / summary_filename
+
+        raw_result = self._generate_raw_data_csv(survey, raw_path)
+        if raw_result.is_failure():
+            return raw_result
+
+        summary_result = self._generate_summary_csv(survey, summary_path)
+        if summary_result.is_failure():
+            return summary_result
+
+        return Success((str(raw_path), str(summary_path)))
+
+    def _generate_raw_data_csv(self, survey, csv_path: Path) -> Result[None, str]:
+        """Raw Data CSV 파일을 생성합니다.
+
+        Args:
+            survey: Survey 엔티티
+            csv_path: CSV 파일 경로
+
+        Returns:
+            Success[None] 또는 Failure[에러 메시지]
+        """
+        try:
+            fieldnames = [
+                "응답ID",
+                "설문제목",
+                "질문",
+                "질문유형",
+                "질문범주",
+                "답변",
+                "응답자ID",
+                "응답시간",
+                "소요시간(초)",
+                "세션ID"
+            ]
+
+            with open(csv_path, "w", newline="", encoding="utf-8-sig") as f:
+                writer = csv.DictWriter(f, fieldnames=fieldnames)
+                writer.writeheader()
+
+                for question in survey.questions:
+                    category_name = ""
+                    if question.category_id and self.category_repository:
+                        category = self.category_repository.find_category_by_id(question.category_id)
+                        if category:
+                            category_name = category.name
+
+                    responses = self.response_repository.find_by_question_id(question.id)
+
+                    for response in responses:
+                        row = {
+                            "응답ID": response.id,
+                            "설문제목": survey.title,
+                            "질문": question.text,
+                            "질문유형": question.question_type.value,
+                            "질문범주": category_name,
+                            "답변": response.answer,
+                            "응답자ID": response.respondent_id,
+                            "응답시간": response.answered_at.strftime("%Y-%m-%d %H:%M:%S"),
+                            "소요시간(초)": response.time_spent_seconds,
+                            "세션ID": response.session_id
+                        }
+                        writer.writerow(row)
+
+                f.flush()
+
+            return Success(None)
+
+        except Exception as e:
+            return Failure(f"Raw Data CSV 생성 실패: {str(e)}")
+
+    def _generate_summary_csv(self, survey, csv_path: Path) -> Result[None, str]:
+        """Summary CSV 파일을 생성합니다.
+
+        Args:
+            survey: Survey 엔티티
+            csv_path: CSV 파일 경로
+
+        Returns:
+            Success[None] 또는 Failure[에러 메시지]
+        """
+        try:
+            with open(csv_path, "w", newline="", encoding="utf-8-sig") as f:
+                writer = csv.writer(f)
+
+                writer.writerow(["설문 정보"])
+                writer.writerow(["제목", survey.title])
+                writer.writerow(["설명", survey.description])
+                writer.writerow(["생성일", survey.created_at.strftime("%Y-%m-%d %H:%M:%S")])
+                writer.writerow([])
+
+                for question in survey.questions:
+                    category_name = ""
+                    if question.category_id and self.category_repository:
+                        category = self.category_repository.find_category_by_id(question.category_id)
+                        if category:
+                            category_name = category.name
+
+                    responses = self.response_repository.find_by_question_id(question.id)
+                    answers = [r.answer for r in responses]
+
+                    writer.writerow(["질문", question.text])
+                    writer.writerow(["유형", question.question_type.value])
+                    writer.writerow(["범주", category_name])
+                    writer.writerow(["총 응답 수", len(answers)])
+
+                    if question.question_type == QuestionType.RATING:
+                        ratings = [int(a) for a in answers if a.isdigit()]
+                        if ratings:
+                            avg_rating = sum(ratings) / len(ratings)
+                            writer.writerow(["평균 평점", round(avg_rating, 2)])
+
+                            counter = Counter(ratings)
+                            writer.writerow(["평점", "개수"])
+                            for rating in range(1, 6):
+                                count = counter.get(rating, 0)
+                                writer.writerow([rating, count])
+
+                    elif question.question_type == QuestionType.MULTIPLE_CHOICE:
+                        counter = Counter(answers)
+                        writer.writerow(["선택지", "개수"])
+                        for choice, count in counter.items():
+                            writer.writerow([choice, count])
+
+                    elif question.question_type == QuestionType.TEXT:
+                        writer.writerow(["텍스트 응답은 Raw Data CSV를 참조하세요"])
+
+                    writer.writerow([])
+
+                f.flush()
+
+            return Success(None)
+
+        except Exception as e:
+            return Failure(f"Summary CSV 생성 실패: {str(e)}")

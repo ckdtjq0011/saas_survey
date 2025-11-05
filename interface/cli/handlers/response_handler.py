@@ -359,3 +359,41 @@ class ResponseHandler(BaseHandler):
 
         self.ui.print_info(f"\n진행률: 100% ({total_questions}/{total_questions})")
         return answers, time_spent_data
+
+    def export_results_flow(self, user: User) -> None:
+        """설문 결과를 CSV로 내보내는 플로우를 실행합니다.
+
+        Args:
+            user: 현재 로그인한 사용자
+        """
+        try:
+            self.ui.print_section("설문 결과 CSV 내보내기")
+
+            survey_id = self._select_survey(user)
+            if not survey_id:
+                return
+
+            success, error, results_data = self.commands.get_survey(user, survey_id)
+            if not success or not results_data:
+                self.ui.print_error(f"설문 조회 실패: {error}")
+                return
+
+            self.ui.print_info(f"설문: {results_data['title']}")
+            self.ui.print_info("")
+
+            if self.confirm_operation("설문 결과를 CSV 파일로 내보내시겠습니까?"):
+                success, error, file_paths = self.commands.export_results(user, survey_id)
+
+                if success and file_paths:
+                    raw_path, summary_path = file_paths
+                    self.ui.print_success("설문 결과가 CSV 파일로 내보내졌습니다")
+                    self.ui.print_info("")
+                    self.ui.print_info(f"Raw Data CSV: {raw_path}")
+                    self.ui.print_info(f"Summary CSV: {summary_path}")
+                else:
+                    self.ui.print_error(f"결과 내보내기 실패: {error}")
+
+        except Exception as e:
+            self.handle_error("결과 내보내기", e)
+        finally:
+            self.ui.pause()

@@ -12,6 +12,7 @@ from infrastructure.persistence.csv_survey_repository import CsvSurveyRepository
 from infrastructure.persistence.csv_response_repository import CsvResponseRepository
 from infrastructure.persistence.csv_survey_session_repository import CsvSurveySessionRepository
 from infrastructure.persistence.csv_response_history_repository import CsvResponseHistoryRepository
+from infrastructure.persistence.csv_category_repository import CsvCategoryRepository
 from application.auth_service import AuthService
 from application.survey_service import SurveyService
 from application.response_service import ResponseService
@@ -158,6 +159,19 @@ def survey_session_repo(temp_data_dir):
 
 
 @pytest.fixture(scope="function")
+def category_repo(temp_data_dir):
+    """테스트용 Category Repository를 생성합니다.
+
+    각 테스트마다 독립적인 Repository 인스턴스를 생성합니다.
+    """
+    repo = CsvCategoryRepository(temp_data_dir)
+    yield repo
+    csv_file = temp_data_dir / "categories.csv"
+    if csv_file.exists():
+        csv_file.unlink(missing_ok=True)
+
+
+@pytest.fixture(scope="function")
 def auth_service(tenant_repo, user_repo, session_repo):
     """테스트용 Auth Service를 생성합니다.
 
@@ -176,12 +190,12 @@ def survey_service(survey_repo):
 
 
 @pytest.fixture(scope="function")
-def response_service(response_repo, response_history_repo, survey_repo):
+def response_service(response_repo, response_history_repo, survey_repo, category_repo):
     """테스트용 Response Service를 생성합니다.
 
     각 테스트마다 독립적인 Service 인스턴스를 생성합니다.
     """
-    return ResponseService(response_repo, response_history_repo, survey_repo)
+    return ResponseService(response_repo, response_history_repo, survey_repo, category_repo)
 
 
 @pytest.fixture(scope="function")
