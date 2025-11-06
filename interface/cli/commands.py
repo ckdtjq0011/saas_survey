@@ -1,21 +1,14 @@
-from pathlib import Path
 from loguru import logger
 from domain.entities.user import User
 from domain.value_objects.types import QuestionType
 from domain.value_objects.role import Role
+from domain.repositories.tenant_repository import TenantRepository
+from domain.repositories.user_repository import UserRepository
 from application.survey_service import SurveyService
 from application.response_service import ResponseService
 from application.survey_session_service import SurveySessionService
 from application.auth_service import AuthService
 from application.category_service import CategoryService
-from infrastructure.persistence.csv_survey_repository import CsvSurveyRepository
-from infrastructure.persistence.csv_response_repository import CsvResponseRepository
-from infrastructure.persistence.csv_survey_session_repository import CsvSurveySessionRepository
-from infrastructure.persistence.csv_response_history_repository import CsvResponseHistoryRepository
-from infrastructure.persistence.csv_tenant_repository import CsvTenantRepository
-from infrastructure.persistence.csv_user_repository import CsvUserRepository
-from infrastructure.persistence.csv_session_repository import CsvSessionRepository
-from infrastructure.persistence.csv_category_repository import CsvCategoryRepository
 
 
 class Commands:
@@ -29,30 +22,35 @@ class Commands:
         category_service: 범주 서비스
     """
 
-    def __init__(self, data_dir: Path, debug: bool = False):
+    def __init__(
+        self,
+        survey_service: SurveyService,
+        response_service: ResponseService,
+        survey_session_service: SurveySessionService,
+        auth_service: AuthService,
+        category_service: CategoryService,
+        tenant_repo: TenantRepository,
+        user_repo: UserRepository,
+        debug: bool = False
+    ):
         """CLI 명령어 핸들러를 초기화합니다.
 
         Args:
-            data_dir: 데이터 디렉토리 경로
+            survey_service: 설문 서비스
+            response_service: 응답 서비스
+            survey_session_service: 설문 세션 서비스
+            auth_service: 인증 서비스
+            category_service: 범주 서비스
+            tenant_repo: 테넌트 저장소
+            user_repo: 사용자 저장소
             debug: 디버그 모드 활성화
         """
-        self.data_dir = data_dir
         self.debug = debug
-
-        survey_repo = CsvSurveyRepository(data_dir)
-        response_repo = CsvResponseRepository(data_dir)
-        survey_session_repo = CsvSurveySessionRepository(data_dir)
-        response_history_repo = CsvResponseHistoryRepository(data_dir)
-        tenant_repo = CsvTenantRepository(data_dir)
-        user_repo = CsvUserRepository(data_dir)
-        session_repo = CsvSessionRepository(data_dir)
-        category_repo = CsvCategoryRepository(data_dir)
-
-        self.survey_service = SurveyService(survey_repo)
-        self.response_service = ResponseService(response_repo, response_history_repo, survey_repo, category_repo)
-        self.survey_session_service = SurveySessionService(survey_session_repo, survey_repo)
-        self.auth_service = AuthService(tenant_repo, user_repo, session_repo)
-        self.category_service = CategoryService(category_repo)
+        self.survey_service = survey_service
+        self.response_service = response_service
+        self.survey_session_service = survey_session_service
+        self.auth_service = auth_service
+        self.category_service = category_service
         self.tenant_repo = tenant_repo
         self.user_repo = user_repo
 

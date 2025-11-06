@@ -1,4 +1,3 @@
-from pathlib import Path
 from loguru import logger
 from domain.entities.user import User
 from interface.cli.commands import Commands
@@ -17,15 +16,15 @@ class InteractiveCLI:
         api_key: 현재 세션 API 키
     """
 
-    def __init__(self, data_dir: Path, debug: bool = False, verbose: bool = False):
+    def __init__(self, commands: Commands, debug: bool = False, verbose: bool = False):
         """CLI 애플리케이션을 초기화합니다.
 
         Args:
-            data_dir: 데이터 디렉토리 경로
+            commands: 명령어 핸들러
             debug: 디버그 모드 활성화
             verbose: 자세한 출력 모드
         """
-        self.commands = Commands(data_dir, debug=debug)
+        self.commands = commands
         self.session_manager = SessionManager()
         self.current_user: User | None = None
         self.api_key: str | None = None

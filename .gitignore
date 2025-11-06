@@ -174,5 +174,54 @@ poetry.toml
 pyrightconfig.json
 
 # End of https://www.toptal.com/developers/gitignore/api/python
+
+# ============================================
+# Project-specific ignores
+# ============================================
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+data/
+
+# Log files
+logs/
+
+# Local/personal configuration
+.claude/settings.local.json
+*.local.*
+.env.local
+config.local.py
+settings.local.json
+
+# IDE/Editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Test files
+test_*.py
+test_sqlite_implementation.py
+
+# OS specific files
+.DS_Store
+Thumbs.db
 nul
+desktop.ini
+
+# Alembic database migration
+alembic.ini
+
+# Scripts (local development scripts)
+scripts/migrate_csv_to_sqlite.py
+
+# CSV data files (already included but being explicit)
 *.csv
+
+# Session files
+.session
+session.json
+*.mako

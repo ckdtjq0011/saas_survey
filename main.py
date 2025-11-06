@@ -3,7 +3,10 @@ from pathlib import Path
 from rich.console import Console
 from loguru import logger
 from infrastructure.logging_config import setup_logging
+from infrastructure.di.containers import Container
+from infrastructure.persistence.orm.base import create_database_tables
 from interface.cli.interactive_cli import InteractiveCLI
+from config import settings
 
 app = typer.Typer(
     name="설문조사 시스템",
@@ -47,13 +50,30 @@ def run(
 
     data_dir.mkdir(parents=True, exist_ok=True)
 
+    # DI 컨테이너 설정
+    container = Container()
+    container.config.from_dict({
+        "storage_type": settings.storage_type,
+        "database_url": settings.database_url,
+        "database_echo": settings.database_echo,
+        "data_dir": str(data_dir),
+        "debug": debug
+    })
+
+    # SQLite 사용 시 데이터베이스 테이블 생성
+    if settings.storage_type == "sqlite":
+        logger.info("SQLite 데이터베이스 초기화")
+        create_database_tables(settings.database_url)
+
     if clear_session:
         from interface.cli.session_manager import SessionManager
         SessionManager().clear_session()
         console.print("[green][OK][/green] 세션이 초기화되었습니다.")
 
     try:
-        cli = InteractiveCLI(data_dir, debug=debug, verbose=verbose)
+        # DI 컨테이너에서 Commands 인스턴스 가져오기
+        commands = container.commands()
+        cli = InteractiveCLI(commands, debug=debug, verbose=verbose)
         cli.run()
     except KeyboardInterrupt:
         console.print("\n[yellow][INFO][/yellow] 프로그램이 중단되었습니다.")

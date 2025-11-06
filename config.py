@@ -13,7 +13,9 @@ class Settings(BaseSettings):
     .env 파일에서 환경 변수를 로드하고 타입 검증을 수행합니다.
     """
 
-    database_url: str = "postgresql://user:password@localhost:5432/saas_survey"
+    # Database 설정
+    storage_type: str = "sqlite"  # "csv" 또는 "sqlite"
+    database_url: str = "sqlite:///./data/saas_survey.db"
     database_echo: bool = False
 
     secret_key: str = "development-secret-key-change-in-production"
