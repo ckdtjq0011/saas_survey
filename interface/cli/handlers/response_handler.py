@@ -326,16 +326,26 @@ class ResponseHandler(BaseHandler):
             q_text = question["text"]
             q_type = question["type"]
             q_options = question.get("options", [])
+            q_is_required = question.get("is_required", True)
 
             progress = int((idx - 1) / total_questions * 100)
             self.ui.print_info(f"\n진행률: {progress}% ({idx-1}/{total_questions})")
-            self.ui.print_info(f"[Q{idx}] {q_text}")
+            required_marker = " (필수)" if q_is_required else " (선택)"
+            self.ui.print_info(f"[Q{idx}]{required_marker} {q_text}")
 
             question_start_time = time.time()
 
             if q_type == QuestionType.TEXT.value:
+                if not q_is_required:
+                    self.ui.print_info("  (선택 질문입니다. 건너뛰려면 Enter를 누르세요)")
                 answer = self.ui.get_input("답변")
-                answers[q_id] = answer
+                if not answer and q_is_required:
+                    self.ui.print_warning("필수 질문입니다. 응답을 입력해주세요.")
+                    answer = self.ui.get_input("답변")
+                    while not answer:
+                        answer = self.ui.get_input("답변 (필수)")
+                if answer:  # 선택 질문이어도 답변이 있으면 저장
+                    answers[q_id] = answer
 
             elif q_type == QuestionType.MULTIPLE_CHOICE.value:
                 if q_options:
@@ -352,6 +362,54 @@ class ResponseHandler(BaseHandler):
                 self.ui.print_info("  평점: 1-5")
                 answer = self.ui.get_validated_input("평점", validate_rating_answer)
                 answers[q_id] = answer
+
+            elif q_type == QuestionType.DATE.value:
+                from interface.cli.validators import validate_date_answer
+                self.ui.print_info("  날짜 형식: YYYY-MM-DD (예: 2024-03-15)")
+                answer = self.ui.get_validated_input("날짜", validate_date_answer)
+                answers[q_id] = answer
+
+            elif q_type == QuestionType.NUMBER.value:
+                from interface.cli.validators import validate_number_answer
+                answer = self.ui.get_validated_input("숫자", validate_number_answer)
+                answers[q_id] = answer
+
+            elif q_type == QuestionType.EMAIL.value:
+                from interface.cli.validators import validate_email_answer
+                answer = self.ui.get_validated_input("이메일", validate_email_answer)
+                answers[q_id] = answer
+
+            elif q_type == QuestionType.YES_NO.value:
+                from interface.cli.validators import validate_yes_no_answer
+                self.ui.print_info("  y (예) 또는 n (아니오)")
+                answer = self.ui.get_validated_input("답변", validate_yes_no_answer)
+                answers[q_id] = answer
+
+            elif q_type == QuestionType.SCALE_10.value:
+                from interface.cli.validators import validate_scale_10_answer
+                self.ui.print_info("  척도: 1-10")
+                answer = self.ui.get_validated_input("척도", validate_scale_10_answer)
+                answers[q_id] = answer
+
+            elif q_type == QuestionType.MULTI_SELECT.value:
+                if q_options:
+                    self.ui.print_info("  여러 개 선택 가능 (번호를 쉼표로 구분):")
+                    for opt_idx, opt in enumerate(q_options, 1):
+                        self.ui.print_info(f"  {opt_idx}. {opt}")
+                    answer_str = self.ui.get_input("선택 (예: 1,3,4)")
+                    try:
+                        choices = [int(x.strip()) for x in answer_str.split(',')]
+                        selected = []
+                        for choice in choices:
+                            if 1 <= choice <= len(q_options):
+                                selected.append(q_options[choice - 1])
+                            else:
+                                self.ui.print_warning(f"잘못된 선택: {choice}")
+                                return None, None
+                        answers[q_id] = ', '.join(selected)
+                    except ValueError:
+                        self.ui.print_warning("잘못된 입력 형식입니다")
+                        return None, None
 
             question_end_time = time.time()
             time_spent_seconds = int(question_end_time - question_start_time)

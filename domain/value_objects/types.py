@@ -8,10 +8,22 @@ class QuestionType(Enum):
         TEXT: 텍스트 답변 질문
         RATING: 평점 답변 질문 (1-5)
         MULTIPLE_CHOICE: 객관식 질문
+        DATE: 날짜 입력 질문
+        NUMBER: 숫자 입력 질문
+        EMAIL: 이메일 입력 질문
+        YES_NO: 예/아니오 선택 질문
+        SCALE_10: 10점 척도 질문 (1-10)
+        MULTI_SELECT: 다중 선택 질문
     """
     TEXT = "text"
     RATING = "rating"
     MULTIPLE_CHOICE = "choice"
+    DATE = "date"
+    NUMBER = "number"
+    EMAIL = "email"
+    YES_NO = "yes_no"
+    SCALE_10 = "scale_10"
+    MULTI_SELECT = "multi_select"
 
     @property
     def display_name(self) -> str:
@@ -22,8 +34,14 @@ class QuestionType(Enum):
         """
         display_names = {
             QuestionType.TEXT: "텍스트",
-            QuestionType.RATING: "평점",
+            QuestionType.RATING: "평점 (1-5)",
             QuestionType.MULTIPLE_CHOICE: "객관식",
+            QuestionType.DATE: "날짜",
+            QuestionType.NUMBER: "숫자",
+            QuestionType.EMAIL: "이메일",
+            QuestionType.YES_NO: "예/아니오",
+            QuestionType.SCALE_10: "10점 척도",
+            QuestionType.MULTI_SELECT: "다중 선택",
         }
         return display_names[self]
 
@@ -38,6 +56,12 @@ class QuestionType(Enum):
             QuestionType.TEXT: "자유롭게 텍스트로 답변",
             QuestionType.RATING: "1-5점 척도로 평가",
             QuestionType.MULTIPLE_CHOICE: "제시된 선택지 중 하나를 선택",
+            QuestionType.DATE: "날짜를 선택하여 입력 (YYYY-MM-DD)",
+            QuestionType.NUMBER: "숫자를 입력",
+            QuestionType.EMAIL: "이메일 주소를 입력",
+            QuestionType.YES_NO: "예 또는 아니오를 선택",
+            QuestionType.SCALE_10: "1-10점 척도로 평가",
+            QuestionType.MULTI_SELECT: "제시된 선택지 중 여러 개를 선택 가능",
         }
         return descriptions[self]
 

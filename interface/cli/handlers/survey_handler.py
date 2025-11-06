@@ -60,6 +60,9 @@ class SurveyHandler(BaseHandler):
             options = None
             if question_type == QuestionType.MULTIPLE_CHOICE.value:
                 options = self._get_multiple_choice_options()
+            elif question_type == QuestionType.MULTI_SELECT.value:
+                self.ui.print_info("다중 선택 질문의 선택지를 입력하세요")
+                options = self._get_multiple_choice_options()
 
             category_id = None
             category_choice = self.ui.get_choice(
@@ -69,8 +72,16 @@ class SurveyHandler(BaseHandler):
             if category_choice == "y":
                 category_id = self._select_category(user)
 
+            is_required = True
+            required_choice = self.ui.get_choice(
+                "필수 응답 질문으로 설정하시겠습니까?",
+                choices=["y", "n"],
+            )
+            if required_choice == "n":
+                is_required = False
+
             success, result = self.commands.add_question(
-                user, survey_id, text, question_type, options, category_id
+                user, survey_id, text, question_type, options, category_id, is_required
             )
 
             if success:

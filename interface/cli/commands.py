@@ -224,7 +224,8 @@ class Commands:
         text: str,
         question_type: str,
         options: list[str] | None = None,
-        category_id: str | None = None
+        category_id: str | None = None,
+        is_required: bool = True
     ) -> tuple[bool, str]:
         """질문을 추가합니다.
 
@@ -235,13 +236,14 @@ class Commands:
             question_type: 질문 유형
             options: 객관식 선택지
             category_id: 범주 ID
+            is_required: 필수 응답 여부
 
         Returns:
             (성공 여부, 질문 ID 또는 에러 메시지)
         """
         try:
             q_type = QuestionType.from_value(question_type)
-            result = self.survey_service.add_question(user, survey_id, text, q_type, options, category_id)
+            result = self.survey_service.add_question(user, survey_id, text, q_type, options, category_id, is_required)
 
             if result.is_success():
                 logger.info("질문 추가 완료", extra={"question_id": result.value})

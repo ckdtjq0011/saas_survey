@@ -73,6 +73,11 @@ class ResponseService:
 
         question_map = {q.id: q for q in survey.questions}
 
+        # 필수 질문들이 모두 답변되었는지 확인
+        for question in survey.questions:
+            if question.is_required and question.id not in answers:
+                return Failure(f"필수 질문에 답변하지 않았습니다: {question.text}")
+
         for question_id, answer in answers.items():
             question = question_map.get(question_id)
             if not question:
@@ -110,6 +115,12 @@ class ResponseService:
             Success[None] 또는 Failure[에러 메시지]
         """
         from domain.value_objects.types import QuestionType
+        import datetime
+        import re
+
+        # 선택적 질문이고 답변이 없으면 OK
+        if not question.is_required and not answer:
+            return Success(None)
 
         if question.question_type == QuestionType.RATING:
             if not answer.isdigit():
@@ -119,12 +130,51 @@ class ResponseService:
             if rating < 1 or rating > 5:
                 return Failure(f"평점은 1-5 사이여야 합니다: {rating}")
 
+        elif question.question_type == QuestionType.SCALE_10:
+            if not answer.isdigit():
+                return Failure(f"척도는 숫자여야 합니다: {answer}")
+
+            scale = int(answer)
+            if scale < 1 or scale > 10:
+                return Failure(f"척도는 1-10 사이여야 합니다: {scale}")
+
         elif question.question_type == QuestionType.MULTIPLE_CHOICE:
             if not question.options:
                 return Failure("객관식 질문에 선택지가 없습니다")
 
             if answer not in question.options:
                 return Failure(f"유효하지 않은 선택지입니다: {answer}. 가능한 선택지: {', '.join(question.options)}")
+
+        elif question.question_type == QuestionType.MULTI_SELECT:
+            if not question.options:
+                return Failure("다중 선택 질문에 선택지가 없습니다")
+
+            selected = [item.strip() for item in answer.split(',')]
+            invalid = [item for item in selected if item not in question.options]
+            if invalid:
+                return Failure(f"유효하지 않은 선택: {', '.join(invalid)}. 가능한 선택지: {', '.join(question.options)}")
+
+        elif question.question_type == QuestionType.DATE:
+            try:
+                datetime.datetime.strptime(answer, "%Y-%m-%d")
+            except ValueError:
+                return Failure(f"날짜는 YYYY-MM-DD 형식이어야 합니다: {answer}")
+
+        elif question.question_type == QuestionType.NUMBER:
+            try:
+                float(answer)
+            except ValueError:
+                return Failure(f"유효한 숫자가 아닙니다: {answer}")
+
+        elif question.question_type == QuestionType.EMAIL:
+            pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+            if not re.match(pattern, answer):
+                return Failure(f"유효한 이메일 형식이 아닙니다: {answer}")
+
+        elif question.question_type == QuestionType.YES_NO:
+            answer_lower = answer.lower().strip()
+            if answer_lower not in ['y', 'n', 'yes', 'no', '예', '아니오']:
+                return Failure(f"답변은 y (예) 또는 n (아니오)여야 합니다: {answer}")
 
         return Success(None)
 
@@ -165,6 +215,17 @@ class ResponseService:
                     "average": round(avg_rating, 2),
                     "distribution": dict(counter),
                 }
+            elif question.question_type == QuestionType.SCALE_10:
+                scales = [int(a) for a in answers if a.isdigit()]
+                avg_scale = sum(scales) / len(scales) if scales else 0.0
+                counter = Counter([str(s) for s in scales])
+                results[question.id] = {
+                    "question": question.text,
+                    "type": question.question_type.value,
+                    "count": len(scales),
+                    "average": round(avg_scale, 2),
+                    "distribution": dict(counter),
+                }
             elif question.question_type == QuestionType.MULTIPLE_CHOICE:
                 counter = Counter(answers)
                 results[question.id] = {
@@ -173,7 +234,64 @@ class ResponseService:
                     "count": len(answers),
                     "distribution": dict(counter),
                 }
+            elif question.question_type == QuestionType.YES_NO:
+                # 정규화: y/yes/예 -> y, n/no/아니오 -> n
+                normalized = []
+                for a in answers:
+                    a_lower = a.lower().strip()
+                    if a_lower in ['y', 'yes', '예']:
+                        normalized.append('y')
+                    elif a_lower in ['n', 'no', '아니오']:
+                        normalized.append('n')
+                counter = Counter(normalized)
+                results[question.id] = {
+                    "question": question.text,
+                    "type": question.question_type.value,
+                    "count": len(normalized),
+                    "distribution": {"예": counter.get('y', 0), "아니오": counter.get('n', 0)},
+                }
+            elif question.question_type == QuestionType.MULTI_SELECT:
+                # 다중 선택 답변 집계
+                all_selections = []
+                for a in answers:
+                    selections = [item.strip() for item in a.split(',')]
+                    all_selections.extend(selections)
+                counter = Counter(all_selections)
+                results[question.id] = {
+                    "question": question.text,
+                    "type": question.question_type.value,
+                    "count": len(answers),
+                    "distribution": dict(counter),
+                    "total_selections": len(all_selections),
+                }
+            elif question.question_type == QuestionType.NUMBER:
+                # 숫자형 답변 통계
+                numbers = []
+                for a in answers:
+                    try:
+                        numbers.append(float(a))
+                    except ValueError:
+                        pass
+                if numbers:
+                    avg_num = sum(numbers) / len(numbers)
+                    results[question.id] = {
+                        "question": question.text,
+                        "type": question.question_type.value,
+                        "count": len(numbers),
+                        "average": round(avg_num, 2),
+                        "min": min(numbers),
+                        "max": max(numbers),
+                        "answers": [str(n) for n in numbers],
+                    }
+                else:
+                    results[question.id] = {
+                        "question": question.text,
+                        "type": question.question_type.value,
+                        "count": 0,
+                        "answers": [],
+                    }
             else:
+                # TEXT, DATE, EMAIL 등은 개별 답변 목록으로 제공
                 results[question.id] = {
                     "question": question.text,
                     "type": question.question_type.value,

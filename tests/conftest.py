@@ -133,6 +133,19 @@ def response_repo(temp_data_dir):
 
 
 @pytest.fixture(scope="function")
+def category_repo(temp_data_dir):
+    """테스트용 Category Repository를 생성합니다.
+
+    각 테스트마다 독립적인 Repository 인스턴스를 생성합니다.
+    """
+    repo = CsvCategoryRepository(temp_data_dir)
+    yield repo
+    csv_file = temp_data_dir / "categories.csv"
+    if csv_file.exists():
+        csv_file.unlink(missing_ok=True)
+
+
+@pytest.fixture(scope="function")
 def response_history_repo(temp_data_dir):
     """테스트용 Response History Repository를 생성합니다.
 

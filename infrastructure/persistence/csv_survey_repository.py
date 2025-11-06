@@ -40,7 +40,7 @@ class CsvSurveyRepository(SurveyRepository):
 
         if not self.questions_file.exists():
             with open(self.questions_file, "w", newline="", encoding="utf-8-sig") as f:
-                writer = csv.DictWriter(f, fieldnames=["id", "survey_id", "text", "question_type", "options", "category_id"])
+                writer = csv.DictWriter(f, fieldnames=["id", "survey_id", "text", "question_type", "order", "is_required", "options", "category_id"])
                 writer.writeheader()
 
     def save_survey(self, survey: Survey) -> None:
@@ -61,7 +61,7 @@ class CsvSurveyRepository(SurveyRepository):
             question: 저장할 질문 엔티티
         """
         with open(self.questions_file, "a", newline="", encoding="utf-8-sig") as f:
-            writer = csv.DictWriter(f, fieldnames=["id", "survey_id", "text", "question_type", "options", "category_id"])
+            writer = csv.DictWriter(f, fieldnames=["id", "survey_id", "text", "question_type", "order", "is_required", "options", "category_id"])
             writer.writerow(question.to_dict())
             f.flush()
 
@@ -117,7 +117,7 @@ class CsvSurveyRepository(SurveyRepository):
             survey_id: 설문 식별자
 
         Returns:
-            질문 엔티티 목록
+            질문 엔티티 목록 (order 필드로 정렬됨)
         """
         questions = []
         with open(self.questions_file, "r", encoding="utf-8-sig") as f:
@@ -131,6 +131,9 @@ class CsvSurveyRepository(SurveyRepository):
                 except (KeyError, ValueError) as e:
                     logger.warning(f"손상된 질문 데이터를 건너뜁니다", extra={"error": str(e), "row": row})
                     continue
+
+        # order 필드로 정렬 (기본값 0을 가진 기존 데이터도 처리)
+        questions.sort(key=lambda q: q.order)
         return questions
 
     def find_by_owner_id(self, owner_id: str) -> list[Survey]:

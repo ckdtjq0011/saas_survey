@@ -11,6 +11,8 @@ class Question:
         survey_id: 소속된 설문 식별자
         text: 질문 내용
         question_type: 질문 유형
+        order: 질문 순서 (0부터 시작)
+        is_required: 필수 응답 여부 (기본값: True)
         options: 객관식 선택지 (객관식인 경우)
         category_id: 소속 범주 식별자 (선택 사항)
     """
@@ -18,6 +20,8 @@ class Question:
     survey_id: str
     text: str
     question_type: QuestionType
+    order: int = 0
+    is_required: bool = True
     options: tuple[str, ...] | None = None
     category_id: str | None = None
 
@@ -33,9 +37,14 @@ class Question:
             raise ValueError("설문 ID는 필수입니다")
         if not self.text or not self.text.strip():
             raise ValueError("질문 내용은 필수입니다")
+        if self.order < 0:
+            raise ValueError("질문 순서는 0 이상이어야 합니다")
         if self.question_type == QuestionType.MULTIPLE_CHOICE:
             if not self.options or len(self.options) < 2:
                 raise ValueError("객관식 질문은 최소 2개 이상의 선택지가 필요합니다")
+        if self.question_type == QuestionType.MULTI_SELECT:
+            if not self.options or len(self.options) < 2:
+                raise ValueError("다중 선택 질문은 최소 2개 이상의 선택지가 필요합니다")
 
     def to_dict(self) -> dict[str, str]:
         """엔티티를 딕셔너리로 변환합니다.
@@ -50,6 +59,8 @@ class Question:
             "survey_id": self.survey_id,
             "text": self.text,
             "question_type": self.question_type.value,
+            "order": str(self.order),
+            "is_required": str(self.is_required),
             "options": OPTIONS_DELIMITER.join(self.options) if self.options else "",
             "category_id": self.category_id if self.category_id else "",
         }
@@ -72,7 +83,7 @@ class Question:
             if OPTIONS_DELIMITER in options_str:
                 options = tuple(options_str.split(OPTIONS_DELIMITER))
             elif "|" in options_str:
-                # 기존 데이터 호환성
+                # Backward compatibility: 기존 데이터 호환성
                 options = tuple(options_str.split("|"))
             else:
                 options = (options_str,) if options_str else None
@@ -82,11 +93,21 @@ class Question:
         # Backward compatibility: category_id가 없는 기존 데이터 지원
         category_id = data.get("category_id", "")
 
+        # Backward compatibility: order가 없는 기존 데이터 지원
+        order_str = data.get("order", "0")
+        order = int(order_str) if order_str else 0
+
+        # Backward compatibility: is_required가 없는 기존 데이터 지원 (기본값: True)
+        is_required_str = data.get("is_required", "True")
+        is_required = is_required_str.lower() in ["true", "1", "yes"]
+
         return cls(
             id=data["id"],
             survey_id=data["survey_id"],
             text=data["text"],
             question_type=QuestionType(data["question_type"]),
+            order=order,
+            is_required=is_required,
             options=options,
             category_id=category_id if category_id else None,
         )
