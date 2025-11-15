@@ -1,5 +1,6 @@
-from pydantic import BaseModel, Field
 from datetime import datetime
+from pydantic import BaseModel, Field, field_validator
+from domain.value_objects.types import QuestionType
 
 
 class CreateSurveyRequest(BaseModel):
@@ -104,3 +105,89 @@ class SurveyListResponse(BaseModel):
     """
     surveys: list[SurveyListItem] = Field(default_factory=list, description="설문 목록")
     total: int = Field(..., description="전체 설문 수")
+
+
+class UpdateSurveyRequest(BaseModel):
+    """설문 수정 요청 스키마입니다.
+
+    Attributes:
+        title: 설문 제목 (선택)
+        description: 설문 설명 (선택)
+    """
+    title: str | None = Field(None, min_length=1, max_length=200, description="설문 제목")
+    description: str | None = Field(None, min_length=1, max_length=1000, description="설문 설명")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "title": "수정된 설문 제목",
+                "description": "수정된 설문 설명"
+            }
+        }
+
+
+class UpdateQuestionRequest(BaseModel):
+    """질문 수정 요청 스키마입니다.
+
+    Attributes:
+        text: 질문 내용 (선택)
+        question_type: 질문 유형 (선택)
+        options: 객관식 선택지 (선택)
+        is_required: 필수 여부 (선택)
+        category_id: 범주 ID (선택)
+    """
+    text: str | None = Field(None, min_length=1, max_length=500, description="질문 내용")
+    question_type: str | None = Field(None, description="질문 유형")
+    options: list[str] | None = Field(None, description="객관식 선택지")
+    is_required: bool | None = Field(None, description="필수 여부")
+    category_id: str | None = Field(None, description="범주 ID")
+
+    @field_validator("question_type")
+    @classmethod
+    def validate_question_type(cls, v: str | None) -> str | None:
+        """질문 유형 유효성 검사입니다.
+
+        Args:
+            v: 질문 유형 문자열
+
+        Returns:
+            검증된 질문 유형 문자열
+
+        Raises:
+            ValueError: 유효하지 않은 질문 유형
+        """
+        if v is None:
+            return v
+
+        try:
+            QuestionType[v]
+        except KeyError:
+            valid_types = ", ".join(t.name for t in QuestionType)
+            raise ValueError(f"유효하지 않은 질문 유형입니다: {v}. 가능한 값: {valid_types}")
+        return v
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "text": "수정된 질문 내용",
+                "question_type": "RATING",
+                "is_required": True,
+                "category_id": "category_123"
+            }
+        }
+
+
+class ReorderQuestionsRequest(BaseModel):
+    """질문 순서 재배열 요청 스키마입니다.
+
+    Attributes:
+        question_ids: 새로운 순서의 질문 ID 목록
+    """
+    question_ids: list[str] = Field(..., min_length=1, description="새로운 순서의 질문 ID 목록")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "question_ids": ["q3", "q1", "q2", "q4"]
+            }
+        }

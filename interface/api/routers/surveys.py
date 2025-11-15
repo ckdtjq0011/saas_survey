@@ -1,321 +1,254 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from application.survey_service import SurveyService
-from domain.entities.user import User
-from domain.value_objects.types import QuestionType
-from interface.api.dependencies import get_survey_service, get_anonymous_user
+from fastapi import APIRouter, Depends, status, Query
+from loguru import logger
+
+from interface.api.dependencies import (
+    get_survey_service,
+    get_current_user,
+    require_manager
+)
+from interface.api.exceptions import handle_result
 from interface.api.schemas.survey import (
     CreateSurveyRequest,
-    CreateSurveyResponse,
-    AddQuestionRequest,
-    AddQuestionResponse,
+    UpdateSurveyRequest,
     SurveyResponse,
     SurveyListResponse,
     SurveyListItem,
-    QuestionResponse,
+    QuestionResponse
 )
+from interface.api.schemas.common import IdResponse, MessageResponse
+from application.survey_service import SurveyService
+from domain.entities.user import User
 
 
-router = APIRouter(prefix="/surveys", tags=["surveys"])
+router = APIRouter(prefix="/surveys", tags=["설문 관리"])
 
 
 @router.post(
     "",
-    response_model=CreateSurveyResponse,
+    response_model=IdResponse,
     status_code=status.HTTP_201_CREATED,
     summary="설문 생성",
-    description="""
-    새로운 설문을 생성합니다.
-
-    **요청 예시:**
-    ```json
-    {
-        "title": "2024년 병원 만족도 조사",
-        "description": "환자 경험 개선을 위한 설문입니다"
-    }
-    ```
-
-    **응답 예시:**
-    ```json
-    {
-        "survey_id": "uuid-format-id",
-        "message": "설문이 생성되었습니다"
-    }
-    ```
-
-    생성된 설문 ID는 질문 추가, 응답 제출 등에 사용됩니다.
-    """
+    description="새로운 설문을 생성합니다. SURVEY_MANAGER 또는 TENANT_ADMIN 권한이 필요합니다."
 )
-def create_survey(
+async def create_survey(
     request: CreateSurveyRequest,
-    service: SurveyService = Depends(get_survey_service),
-    user: User = Depends(get_anonymous_user)
-) -> CreateSurveyResponse:
+    current_user: User = Depends(require_manager()),
+    service: SurveyService = Depends(get_survey_service)
+) -> IdResponse:
     """설문을 생성합니다.
 
     Args:
         request: 설문 생성 요청
+        current_user: 현재 사용자
         service: 설문 서비스
-        user: 익명 사용자
 
     Returns:
-        설문 생성 응답
-
-    Raises:
-        HTTPException: 설문 생성 실패 시
+        생성된 설문 ID
     """
-    try:
-        result = service.create_survey(user, request.title, request.description)
-        if result.is_failure():
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=result.error
-            )
-        return CreateSurveyResponse(survey_id=result.value)
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"설문 생성 중 오류가 발생했습니다: {str(e)}"
-        )
+    logger.info(
+        f"설문 생성 요청: user_id={current_user.id}, title={request.title}"
+    )
+
+    result = service.create_survey(
+        user=current_user,
+        title=request.title,
+        description=request.description
+    )
+    survey_id = handle_result(result)
+
+    logger.info(f"설문 생성 성공: survey_id={survey_id}, owner={current_user.id}")
+
+    return IdResponse(id=survey_id, message="설문이 생성되었습니다")
 
 
 @router.get(
     "",
     response_model=SurveyListResponse,
     summary="설문 목록 조회",
-    description="""
-    시스템에 등록된 모든 설문 목록을 조회합니다.
-
-    **응답 예시:**
-    ```json
-    {
-        "surveys": [
-            {
-                "id": "uuid-format-id",
-                "title": "2024년 병원 만족도 조사",
-                "description": "환자 경험 개선을 위한 설문입니다",
-                "question_count": "3"
-            }
-        ],
-        "total": 1
-    }
-    ```
-
-    각 설문의 기본 정보와 질문 수를 확인할 수 있습니다.
-    """
+    description="현재 사용자가 볼 수 있는 설문 목록을 조회합니다. 테넌트 내 설문만 조회됩니다."
 )
-def list_surveys(
-    service: SurveyService = Depends(get_survey_service),
-    user: User = Depends(get_anonymous_user)
+async def list_surveys(
+    search: str | None = Query(None, description="검색어 (제목, 설명)"),
+    current_user: User = Depends(get_current_user),
+    service: SurveyService = Depends(get_survey_service)
 ) -> SurveyListResponse:
     """설문 목록을 조회합니다.
 
     Args:
+        search: 검색어 (옵션)
+        current_user: 현재 사용자
         service: 설문 서비스
-        user: 익명 사용자
 
     Returns:
-        설문 목록 응답
-
-    Raises:
-        HTTPException: 목록 조회 실패 시
+        설문 목록
     """
-    try:
-        surveys = service.get_surveys_by_user(user)
-        survey_items = [
-            SurveyListItem(
-                id=s.id,
-                title=s.title,
-                description=s.description,
-                question_count=str(len(s.questions))
-            )
-            for s in surveys
+    logger.info(
+        f"설문 목록 조회 요청: user_id={current_user.id}, search={search}"
+    )
+
+    surveys = service.get_surveys_by_user(current_user)
+
+    if search:
+        surveys = [
+            s for s in surveys
+            if search.lower() in s.title.lower() or search.lower() in s.description.lower()
         ]
-        return SurveyListResponse(surveys=survey_items, total=len(survey_items))
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"설문 목록 조회 중 오류가 발생했습니다: {str(e)}"
+
+    survey_items = [
+        SurveyListItem(
+            id=s.id,
+            title=s.title,
+            description=s.description,
+            question_count=str(len(s.questions))
         )
+        for s in surveys
+    ]
+
+    logger.info(
+        f"설문 목록 조회 성공: user_id={current_user.id}, count={len(survey_items)}"
+    )
+
+    return SurveyListResponse(surveys=survey_items, total=len(survey_items))
 
 
 @router.get(
     "/{survey_id}",
     response_model=SurveyResponse,
     summary="설문 상세 조회",
-    description="""
-    특정 설문의 상세 정보를 조회합니다.
-
-    설문의 기본 정보와 함께 모든 질문 목록을 포함합니다.
-    각 질문의 유형(text/rating/choice)과 옵션 정보를 확인할 수 있습니다.
-
-    **응답 예시:**
-    ```json
-    {
-        "id": "uuid-format-id",
-        "title": "병원 만족도 조사",
-        "description": "환자 경험 개선을 위한 설문",
-        "created_at": "2025-10-13T17:03:46.901022",
-        "questions": [
-            {
-                "id": "question-uuid",
-                "text": "서비스에 만족하십니까?",
-                "type": "rating",
-                "options": []
-            },
-            {
-                "id": "question-uuid-2",
-                "text": "가장 좋았던 점은?",
-                "type": "choice",
-                "options": ["의료진", "시설", "대기시간"]
-            }
-        ]
-    }
-    ```
-
-    **에러:**
-    - 404: 설문을 찾을 수 없음
-    """
+    description="특정 설문의 상세 정보를 조회합니다. 질문 목록이 포함됩니다."
 )
-def get_survey(
+async def get_survey(
     survey_id: str,
-    service: SurveyService = Depends(get_survey_service),
-    user: User = Depends(get_anonymous_user)
+    current_user: User = Depends(get_current_user),
+    service: SurveyService = Depends(get_survey_service)
 ) -> SurveyResponse:
     """설문 상세 정보를 조회합니다.
 
     Args:
         survey_id: 설문 ID
+        current_user: 현재 사용자
         service: 설문 서비스
-        user: 익명 사용자
 
     Returns:
-        설문 상세 응답
-
-    Raises:
-        HTTPException: 설문을 찾을 수 없거나 조회 실패 시
+        설문 상세 정보
     """
-    try:
-        result = service.get_survey(user, survey_id)
-        if result.is_failure():
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=result.error
-            )
-        survey = result.value
-        questions = [
-            QuestionResponse(
-                id=q.id,
-                text=q.text,
-                type=q.question_type.value,
-                options=list(q.options) if q.options else []
-            )
-            for q in survey.questions
-        ]
-        return SurveyResponse(
-            id=survey.id,
-            title=survey.title,
-            description=survey.description,
-            created_at=survey.created_at.isoformat(),
-            questions=questions
+    logger.info(
+        f"설문 조회 요청: survey_id={survey_id}, user_id={current_user.id}"
+    )
+
+    result = service.get_survey(current_user, survey_id)
+    survey = handle_result(result, not_found_msg="찾을 수 없")
+
+    questions = [
+        QuestionResponse(
+            id=q.id,
+            text=q.text,
+            type=q.question_type.name,
+            options=list(q.options) if q.options else []
         )
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"설문 조회 중 오류가 발생했습니다: {str(e)}"
-        )
+        for q in survey.questions
+    ]
+
+    logger.info(
+        f"설문 조회 성공: survey_id={survey_id}, question_count={len(questions)}"
+    )
+
+    return SurveyResponse(
+        id=survey.id,
+        title=survey.title,
+        description=survey.description,
+        created_at=survey.created_at.isoformat(),
+        questions=questions
+    )
 
 
-@router.post(
-    "/{survey_id}/questions",
-    response_model=AddQuestionResponse,
-    status_code=status.HTTP_201_CREATED,
-    summary="질문 추가",
-    description="""
-    설문에 새로운 질문을 추가합니다.
-
-    **질문 유형:**
-    - `text`: 텍스트 답변 (자유 입력)
-    - `rating`: 평점 답변 (1-5)
-    - `choice`: 객관식 답변 (options 필수)
-
-    **평점형 질문 예시:**
-    ```json
-    {
-        "text": "서비스에 만족하십니까?",
-        "question_type": "rating"
-    }
-    ```
-
-    **객관식 질문 예시:**
-    ```json
-    {
-        "text": "가장 좋았던 점은?",
-        "question_type": "choice",
-        "options": ["의료진", "시설", "대기시간", "진료"]
-    }
-    ```
-
-    **텍스트형 질문 예시:**
-    ```json
-    {
-        "text": "개선 사항을 작성해주세요",
-        "question_type": "text"
-    }
-    ```
-
-    **에러:**
-    - 404: 설문을 찾을 수 없음
-    - 422: 잘못된 question_type 또는 choice 유형인데 options 미제공
-    """
+@router.put(
+    "/{survey_id}",
+    response_model=SurveyResponse,
+    summary="설문 수정",
+    description="설문의 제목과 설명을 수정합니다. 소유자만 수정 가능합니다."
 )
-def add_question(
+async def update_survey(
     survey_id: str,
-    request: AddQuestionRequest,
-    service: SurveyService = Depends(get_survey_service),
-    user: User = Depends(get_anonymous_user)
-) -> AddQuestionResponse:
-    """설문에 질문을 추가합니다.
+    request: UpdateSurveyRequest,
+    current_user: User = Depends(require_manager()),
+    service: SurveyService = Depends(get_survey_service)
+) -> SurveyResponse:
+    """설문을 수정합니다.
 
     Args:
         survey_id: 설문 ID
-        request: 질문 추가 요청
+        request: 설문 수정 요청
+        current_user: 현재 사용자
         service: 설문 서비스
-        user: 익명 사용자
 
     Returns:
-        질문 추가 응답
-
-    Raises:
-        HTTPException: 설문을 찾을 수 없거나 질문 추가 실패 시
+        수정된 설문 정보
     """
-    try:
-        question_type = QuestionType(request.question_type)
-        result = service.add_question(
-            user,
-            survey_id,
-            request.text,
-            question_type,
-            request.options
+    logger.info(
+        f"설문 수정 요청: survey_id={survey_id}, user_id={current_user.id}"
+    )
+
+    result = service.get_survey(current_user, survey_id)
+    survey = handle_result(result, not_found_msg="찾을 수 없")
+
+    if request.title:
+        survey.title = request.title
+    if request.description:
+        survey.description = request.description
+
+    save_result = service.survey_repo.save(survey)
+    updated_survey = handle_result(save_result)
+
+    questions = [
+        QuestionResponse(
+            id=q.id,
+            text=q.text,
+            type=q.question_type.name,
+            options=list(q.options) if q.options else []
         )
-        if result.is_failure():
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=result.error
-            )
-        return AddQuestionResponse(question_id=result.value)
-    except HTTPException:
-        raise
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e)
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"질문 추가 중 오류가 발생했습니다: {str(e)}"
-        )
+        for q in updated_survey.questions
+    ]
+
+    logger.info(f"설문 수정 성공: survey_id={survey_id}")
+
+    return SurveyResponse(
+        id=updated_survey.id,
+        title=updated_survey.title,
+        description=updated_survey.description,
+        created_at=updated_survey.created_at.isoformat(),
+        questions=questions
+    )
+
+
+@router.delete(
+    "/{survey_id}",
+    response_model=MessageResponse,
+    summary="설문 삭제",
+    description="설문을 삭제합니다. 소유자만 삭제 가능합니다."
+)
+async def delete_survey(
+    survey_id: str,
+    current_user: User = Depends(require_manager()),
+    service: SurveyService = Depends(get_survey_service)
+) -> MessageResponse:
+    """설문을 삭제합니다.
+
+    Args:
+        survey_id: 설문 ID
+        current_user: 현재 사용자
+        service: 설문 서비스
+
+    Returns:
+        삭제 메시지
+    """
+    logger.info(
+        f"설문 삭제 요청: survey_id={survey_id}, user_id={current_user.id}"
+    )
+
+    result = service.delete_survey(current_user, survey_id)
+    handle_result(result, not_found_msg="찾을 수 없")
+
+    logger.info(f"설문 삭제 성공: survey_id={survey_id}")
+
+    return MessageResponse(message="설문이 삭제되었습니다")

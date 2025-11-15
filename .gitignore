@@ -225,3 +225,17 @@ scripts/migrate_csv_to_sqlite.py
 .session
 session.json
 *.mako
+
+# ============================================
+# PostgreSQL Docker Setup
+# ============================================
+
+# PostgreSQL data and config
+deployment/postgresql/.env
+deployment/postgresql/postgres-data/
+deployment/postgresql/ssl/
+deployment/postgresql/backups/
+deployment/postgresql/*.log
+
+# Keep example files
+!deployment/postgresql/.env.example
