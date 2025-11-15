@@ -1,5 +1,7 @@
 """SQLAlchemy 기반 SessionRepository 구현체"""
 
+from datetime import datetime
+
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.exc import IntegrityError
 
@@ -85,3 +87,57 @@ class SqlAlchemySessionRepository(SessionRepository):
             if orm:
                 db_session.delete(orm)
                 db_session.commit()
+
+    def find_expired_sessions(self, current_time: datetime) -> list[SessionEntity]:
+        """만료된 세션들을 조회합니다.
+
+        Args:
+            current_time: 현재 시각
+
+        Returns:
+            만료된 세션 목록
+        """
+        with self.session_factory() as db_session:
+            orms = db_session.query(SessionORM).filter(
+                SessionORM.expires_at <= current_time
+            ).all()
+            return [session_orm_to_entity(orm) for orm in orms]
+
+    def delete_sessions_bulk(self, session_ids: list[str]) -> int:
+        """세션들을 일괄 삭제하고 삭제된 개수를 반환합니다.
+
+        Args:
+            session_ids: 삭제할 세션 식별자 목록
+
+        Returns:
+            삭제된 세션 개수
+        """
+        with self.session_factory() as db_session:
+            deleted_count = db_session.query(SessionORM).filter(
+                SessionORM.id.in_(session_ids)
+            ).delete(synchronize_session=False)
+            db_session.commit()
+            return deleted_count
+
+    def count_sessions(self) -> int:
+        """전체 세션 개수를 반환합니다.
+
+        Returns:
+            세션 개수
+        """
+        with self.session_factory() as db_session:
+            return db_session.query(SessionORM).count()
+
+    def count_expired_sessions(self, current_time: datetime) -> int:
+        """만료된 세션 개수를 반환합니다.
+
+        Args:
+            current_time: 현재 시각
+
+        Returns:
+            만료된 세션 개수
+        """
+        with self.session_factory() as db_session:
+            return db_session.query(SessionORM).filter(
+                SessionORM.expires_at <= current_time
+            ).count()

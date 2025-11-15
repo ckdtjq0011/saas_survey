@@ -96,17 +96,17 @@ class UserLogin(BaseModel):
     """사용자 로그인 요청 스키마입니다.
 
     Attributes:
-        username: 사용자 이름
+        email: 이메일 주소
         password: 비밀번호
     """
-    username: str = Field(..., min_length=1, description="사용자 이름")
+    email: str = Field(..., min_length=1, description="이메일 주소")
     password: str = Field(..., min_length=1, description="비밀번호")
 
     class Config:
         json_schema_extra = {
             "example": {
-                "username": "홍길동",
-                "password": "SecurePass123!"
+                "email": "admin@hospital.com",
+                "password": "password123"
             }
         }
 

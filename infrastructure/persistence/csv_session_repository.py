@@ -1,6 +1,8 @@
 import csv
 import logging
+from datetime import datetime
 from pathlib import Path
+
 from domain.entities.session import Session
 from domain.repositories.session_repository import SessionRepository
 
@@ -125,3 +127,101 @@ class CsvSessionRepository(SessionRepository):
             writer.writeheader()
             writer.writerows(sessions)
             f.flush()
+
+    def find_expired_sessions(self, current_time: datetime) -> list[Session]:
+        """만료된 세션들을 조회합니다.
+
+        Args:
+            current_time: 현재 시각
+
+        Returns:
+            만료된 세션 목록
+        """
+        expired_sessions = []
+
+        with open(self.sessions_file, "r", encoding="utf-8-sig") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                if not row or not row.get("id"):
+                    continue
+
+                session = Session.from_dict(row)
+                if session.is_expired(current_time):
+                    expired_sessions.append(session)
+
+        return expired_sessions
+
+    def delete_sessions_bulk(self, session_ids: list[str]) -> int:
+        """세션들을 일괄 삭제하고 삭제된 개수를 반환합니다.
+
+        Args:
+            session_ids: 삭제할 세션 식별자 목록
+
+        Returns:
+            삭제된 세션 개수
+        """
+        session_ids_set = {sid.strip() for sid in session_ids}
+        sessions = []
+        deleted_count = 0
+
+        with open(self.sessions_file, "r", encoding="utf-8-sig") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                if not row or not row.get("id"):
+                    continue
+
+                row_id = row["id"].strip()
+                if row_id in session_ids_set:
+                    deleted_count += 1
+                else:
+                    sessions.append(row)
+
+        with open(self.sessions_file, "w", newline="", encoding="utf-8-sig") as f:
+            writer = csv.DictWriter(
+                f,
+                fieldnames=["id", "user_id", "tenant_id", "api_key", "expires_at", "created_at"]
+            )
+            writer.writeheader()
+            writer.writerows(sessions)
+            f.flush()
+
+        return deleted_count
+
+    def count_sessions(self) -> int:
+        """전체 세션 개수를 반환합니다.
+
+        Returns:
+            세션 개수
+        """
+        count = 0
+
+        with open(self.sessions_file, "r", encoding="utf-8-sig") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                if row and row.get("id"):
+                    count += 1
+
+        return count
+
+    def count_expired_sessions(self, current_time: datetime) -> int:
+        """만료된 세션 개수를 반환합니다.
+
+        Args:
+            current_time: 현재 시각
+
+        Returns:
+            만료된 세션 개수
+        """
+        count = 0
+
+        with open(self.sessions_file, "r", encoding="utf-8-sig") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                if not row or not row.get("id"):
+                    continue
+
+                session = Session.from_dict(row)
+                if session.is_expired(current_time):
+                    count += 1
+
+        return count

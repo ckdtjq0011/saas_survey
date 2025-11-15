@@ -118,19 +118,18 @@ class Commands:
             logger.exception("사용자 등록 중 오류 발생")
             raise
 
-    def login(self, username: str, password: str, tenant_id: str) -> tuple[bool, str, User | None]:
+    def login(self, email: str, password: str) -> tuple[bool, str, User | None]:
         """로그인을 처리합니다.
 
         Args:
-            username: 사용자명
+            email: 이메일 주소
             password: 비밀번호
-            tenant_id: 테넌트 ID
 
         Returns:
             (성공 여부, API 키 또는 에러 메시지, User 엔티티)
         """
         try:
-            result = self.auth_service.login(username, password, tenant_id)
+            result = self.auth_service.login(email, password)
 
             if result.is_success():
                 api_key = result.value
@@ -138,7 +137,7 @@ class Commands:
 
                 if session_result.is_success():
                     user, _ = session_result.value
-                    logger.info("로그인 성공", extra={"username": username})
+                    logger.info("로그인 성공", extra={"email": email})
                     return True, api_key, user
                 else:
                     return False, session_result.error, None

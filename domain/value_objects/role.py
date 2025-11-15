@@ -7,13 +7,23 @@ class Role(Enum):
     """사용자 역할을 나타내는 Enum입니다.
 
     Attributes:
-        TENANT_ADMIN: 테넌트 관리자 (모든 권한)
+        SUPER_ADMIN: 시스템 관리자 (모든 테넌트 접근 가능)
+        TENANT_ADMIN: 테넌트 관리자 (테넌트 내 모든 권한)
         SURVEY_MANAGER: 설문 관리자 (설문 CRUD, 결과 조회)
         RESPONDENT: 응답자 (응답 제출만 가능)
     """
+    SUPER_ADMIN = "super_admin"
     TENANT_ADMIN = "tenant_admin"
     SURVEY_MANAGER = "survey_manager"
     RESPONDENT = "respondent"
+
+    def can_access_all_tenants(self) -> bool:
+        """모든 테넌트 접근 권한이 있는지 확인합니다.
+
+        Returns:
+            True if SUPER_ADMIN, False otherwise
+        """
+        return self == Role.SUPER_ADMIN
 
     def can_create_survey(self) -> bool:
         """설문 생성 권한이 있는지 확인합니다.
@@ -21,7 +31,7 @@ class Role(Enum):
         Returns:
             True if 권한 있음, False otherwise
         """
-        return self in (Role.TENANT_ADMIN, Role.SURVEY_MANAGER)
+        return self in (Role.SUPER_ADMIN, Role.TENANT_ADMIN, Role.SURVEY_MANAGER)
 
     def can_manage_survey(self, is_owner: bool) -> bool:
         """설문 관리 권한이 있는지 확인합니다.
@@ -32,7 +42,7 @@ class Role(Enum):
         Returns:
             True if 권한 있음, False otherwise
         """
-        if self == Role.TENANT_ADMIN:
+        if self in (Role.SUPER_ADMIN, Role.TENANT_ADMIN):
             return True
         if self == Role.SURVEY_MANAGER and is_owner:
             return True
@@ -55,7 +65,7 @@ class Role(Enum):
         Returns:
             True if 권한 있음, False otherwise
         """
-        if self == Role.TENANT_ADMIN:
+        if self in (Role.SUPER_ADMIN, Role.TENANT_ADMIN):
             return True
         if self == Role.SURVEY_MANAGER and is_owner:
             return True
@@ -67,4 +77,4 @@ class Role(Enum):
         Returns:
             True if 권한 있음, False otherwise
         """
-        return self == Role.TENANT_ADMIN
+        return self in (Role.SUPER_ADMIN, Role.TENANT_ADMIN)

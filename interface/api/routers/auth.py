@@ -158,13 +158,13 @@ async def login(
     Returns:
         로그인 응답 (API 키 포함)
     """
-    logger.info(f"로그인 요청: username={request.username}")
+    logger.info(f"로그인 요청: email={request.email}")
 
-    result = auth_service.login(request.username, request.password)
-    session = handle_result(result)
+    result = auth_service.login(request.email, request.password)
+    api_key = handle_result(result)
 
-    user_result = auth_service.user_repo.find_by_id(session.user_id)
-    user = handle_result(user_result)
+    validation_result = auth_service.validate_session(api_key)
+    user, session = handle_result(validation_result)
 
     logger.info(
         f"로그인 성공: user_id={user.id}, session_id={session.id}, "
@@ -172,7 +172,7 @@ async def login(
     )
 
     return LoginResponse(
-        api_key=session.api_key,
+        api_key=api_key,
         user_id=user.id,
         username=user.username,
         role=user.role.name,

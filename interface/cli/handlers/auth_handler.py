@@ -79,17 +79,13 @@ class AuthHandler(BaseHandler):
         try:
             self.ui.print_section("로그인")
 
-            tenant_id = self._select_tenant()
-            if not tenant_id:
-                return False, "", None
-
-            username = self.ui.get_input("사용자명")
+            email = self.ui.get_input("이메일")
             password = self.ui.get_input("비밀번호")
 
-            success, result, user = self.commands.login(username, password, tenant_id)
+            success, result, user = self.commands.login(email, password)
 
             if success:
-                self.ui.print_success(f"로그인 성공! 환영합니다, {username}님")
+                self.ui.print_success(f"로그인 성공! 환영합니다, {user.username}님")
                 return True, result, user
             else:
                 self.ui.print_error(f"로그인 실패: {result}")

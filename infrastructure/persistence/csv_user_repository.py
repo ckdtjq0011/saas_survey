@@ -102,6 +102,29 @@ class CsvUserRepository(UserRepository):
 
         return None
 
+    def find_user_by_email(self, email: str) -> User | None:
+        """이메일로 사용자를 조회합니다 (전체 테넌트 검색).
+
+        Args:
+            email: 이메일 주소
+
+        Returns:
+            사용자 엔티티 또는 None
+        """
+        email = email.strip()
+
+        with open(self.users_file, "r", encoding="utf-8-sig") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                if not row or not row.get("id"):
+                    continue
+
+                row_email = row["email"].strip()
+                if row_email == email:
+                    return User.from_dict(row)
+
+        return None
+
     def find_users_by_tenant(self, tenant_id: str) -> list[User]:
         """테넌트의 모든 사용자를 조회합니다.
 

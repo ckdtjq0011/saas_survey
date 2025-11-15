@@ -77,6 +77,21 @@ class SqlAlchemyUserRepository(UserRepository):
                 return None
             return user_orm_to_entity(orm)
 
+    def find_user_by_email(self, email: str) -> User | None:
+        """이메일로 사용자를 조회합니다 (전체 테넌트 검색).
+
+        Args:
+            email: 이메일 주소
+
+        Returns:
+            사용자 엔티티 또는 None
+        """
+        with self.session_factory() as session:
+            orm = session.query(UserORM).filter_by(email=email).first()
+            if not orm:
+                return None
+            return user_orm_to_entity(orm)
+
     def find_users_by_tenant(self, tenant_id: str) -> list[User]:
         """테넌트의 모든 사용자를 조회합니다.
 

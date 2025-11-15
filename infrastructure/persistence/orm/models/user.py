@@ -16,8 +16,8 @@ class UserORM(Base):
     __table_args__ = (
         # tenant_id와 username 조합이 고유해야 함
         Index("ix_users_tenant_username", "tenant_id", "username", unique=True),
-        # 이메일로 조회하는 경우를 위한 인덱스
-        Index("ix_users_email", "email"),
+        # 이메일은 전체 테넌트에서 고유해야 함
+        Index("ix_users_email", "email", unique=True),
     )
 
     # Primary Key

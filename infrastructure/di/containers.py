@@ -168,12 +168,13 @@ class Container(containers.DeclarativeContainer):
 
     survey_session_service = providers.Factory(
         SurveySessionService,
-        survey_session_repository=survey_session_repository,
+        session_repository=survey_session_repository,
         survey_repository=survey_repository
     )
 
     auth_service = providers.Factory(
         AuthService,
+        tenant_repository=tenant_repository,
         user_repository=user_repository,
         session_repository=session_repository
     )

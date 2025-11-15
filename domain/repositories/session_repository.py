@@ -1,4 +1,6 @@
 from abc import ABC, abstractmethod
+from datetime import datetime
+
 from domain.entities.session import Session
 
 
@@ -44,5 +46,50 @@ class SessionRepository(ABC):
 
         Args:
             session_id: 세션 식별자
+        """
+        pass
+
+    @abstractmethod
+    def find_expired_sessions(self, current_time: datetime) -> list[Session]:
+        """만료된 세션들을 조회합니다.
+
+        Args:
+            current_time: 현재 시각
+
+        Returns:
+            만료된 세션 목록
+        """
+        pass
+
+    @abstractmethod
+    def delete_sessions_bulk(self, session_ids: list[str]) -> int:
+        """세션들을 일괄 삭제하고 삭제된 개수를 반환합니다.
+
+        Args:
+            session_ids: 삭제할 세션 식별자 목록
+
+        Returns:
+            삭제된 세션 개수
+        """
+        pass
+
+    @abstractmethod
+    def count_sessions(self) -> int:
+        """전체 세션 개수를 반환합니다.
+
+        Returns:
+            세션 개수
+        """
+        pass
+
+    @abstractmethod
+    def count_expired_sessions(self, current_time: datetime) -> int:
+        """만료된 세션 개수를 반환합니다.
+
+        Args:
+            current_time: 현재 시각
+
+        Returns:
+            만료된 세션 개수
         """
         pass

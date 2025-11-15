@@ -36,6 +36,11 @@ class Settings(BaseSettings):
 
     log_level: str = "INFO"
 
+    session_cleanup_enabled: bool = True
+    session_cleanup_schedule: str = "0 0 * * *"
+
+    audit_log_enabled: bool = True
+
     class Config:
         env_file = ".env"
         case_sensitive = False
